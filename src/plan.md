@@ -2,11 +2,11 @@
 
 ## Design patterns
 
-# Lazy Load
+### Lazy Load
 
 - Virtual Proxy (using reflection)
 
-# Identity Map
+### Identity Map
 
 - placed within unit of work
 - identity field
@@ -17,18 +17,35 @@
 Potentially
 - multi-table inheritance
 
-# Unit of Work
+### Unit of Work
 
-# Query Object
+- has identity map
 
-# Respository
+When flushing/committing, orders domain model changes in the correct order (topological sort)
+These changes are sent to data mapper, which converts the domain model changes to database table changes and generates the actual sql 
 
-# Data Mapper
+NOTE! We are not use a table data/row data gateway, so the database table rows are not initialized as objects.
+
+### Query Object
+
+### Respository
+
+### Data Mapper
 
 - implement layer supertype
 - embedded value
 - use metadata mapping
 
-# Domain Model
+Responsible for communicating with database. Hence place client here.
+Opens a new connection each time a series of queries is to be made.
+
+### Metadata Mapping
+
+For an initial implementation, use a simple column to column map.
+Value objects come later.
+
+### Domain Model
 
 - implement layer supertype
+
+When object changes, update unit of work
