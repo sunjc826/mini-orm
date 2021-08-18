@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { registry } from "../registry";
 
 export const EMPTY = {} as const;
 export type EMPTY = typeof EMPTY;
@@ -10,8 +11,12 @@ export type EMPTY = typeof EMPTY;
 // query object with checks in place to prevent incorrect queries
 // To consider: create another alternative "dumb" query object without checks
 export class Query {
+  // the base represents the base domain object using the query
+  // whatever is returned will be mapped to the domain object
+  base: string;
   criteria: Record<string, Array<Criterion>> = {};
   joinDomains = new Join();
+  // to support includes functionality in future
   constructor() {}
 
   where(criterion: CriterionObject) {
@@ -30,6 +35,13 @@ export class Query {
     }
     return true;
   }
+
+  // NOTE: we ignore joins first and focus on generating criteria for a single table
+  toQueryString(): string {
+    const BaseTable = registry.getTable(this.base);
+
+  }
+
 
   unscope() {
     this.criteria = {};

@@ -1,3 +1,3 @@
-class DomainObject {
+export abstract class DomainObject {
     
 }

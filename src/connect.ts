@@ -1,6 +1,6 @@
 import { Client, ClientConfig, QueryResult, QueryResultRow } from "pg";
 
-type ResultSet = Array<Record<string, string | number | boolean>>;
+export type ResultSet<T> = Array<T>;
 
 interface Query {
   queryText: string;
@@ -34,7 +34,7 @@ export class DbClient {
     }
   }
 
-  async query(queryText: string, values: any[]): Promise<ResultSet | null> {
+  async query(queryText: string, values?: any[]): Promise<ResultSet<any> | null> {
     const success = await this.connect();
     if (!success) {
       return null;
