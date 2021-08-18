@@ -87,4 +87,11 @@ class ColumnMap extends MetaDataField {
 
 export abstract class Table {
   tableName: string;
+  columns: Record<string, Column> = {};
+  selectColumns() {}
+}
+
+// due to my lack of experience in type reflection, I will stick to regular javascript objects instead
+class Column {
+  type: "varchar" | "text" | "";
 }

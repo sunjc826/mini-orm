@@ -37,9 +37,9 @@ export class Query {
   }
 
   // NOTE: we ignore joins first and focus on generating criteria for a single table
-  toQueryString(): string {
+  toSingleTableQueryString(): string {
     const BaseTable = registry.getTable(this.base);
-
+    
   }
 
 
