@@ -1,12 +1,9 @@
-import _ from "lodash";
+import _, { join } from "lodash";
 import { ColumnMap, DataMapper, MetaData } from "../data-mapper";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
 import { registry } from "../registry";
-import { EQUALS } from "./types";
-
-export const EMPTY = {} as const;
-export type EMPTY = typeof EMPTY;
+import { EMPTY, EQUALS } from "./types";
 
 // NOTE: Query objects operate at the Repository layer, which sits on top of the DataMapper
 // hence the object fields here belong to the domain objects and not the database tables
@@ -19,11 +16,12 @@ export class Query {
   // whatever is returned will be mapped to the domain object
   base: string;
   criteria: Record<string, Array<Criterion>> = {};
-  joinDomains = new Join();
+  joinDomains: Join;
   // to support includes functionality in future
   constructor(base: string) {
     this.base = base;
     this.criteria = { [base]: [] };
+    this.joinDomains = new Join(base);
   }
 
   where(criterion: CriterionObject) {
@@ -80,7 +78,7 @@ export class Query {
 
   unscope() {
     this.criteria = {};
-    this.joinDomains = new Join();
+    this.joinDomains = new Join(this.base);
   }
 }
 
@@ -145,10 +143,10 @@ class Criterion {
 }
 
 // allows chaining of joins
-// Note that the names here are names of the domain objects and not the underlying tables
+// Note that the names here are names of the domain keys and not the underlying tables
 class Join {
   private base: string;
-  private domainNames: Set<string> = new Set();
+  private domainKeys: Set<string> = new Set();
   private joinDomains: ProcessedJoinObject = [];
 
   constructor(base: string) {
@@ -158,8 +156,8 @@ class Join {
   // appends EMPTY to any string that is not a key for an object
   private processDomains(domains: JoinObject): ProcessedJoinObject {
     if (typeof domains === "string") {
-      if (!this.domainNames.has(domains)) {
-        this.domainNames.add(domains);
+      if (!this.domainKeys.has(domains)) {
+        this.domainKeys.add(domains);
       }
       return { [domains]: EMPTY };
     } else if (Array.isArray(domains)) {
@@ -185,9 +183,40 @@ class Join {
   }
 
   hasDomain(domainObjectName: string): boolean {
-    return this.domainNames.has(domainObjectName);
+    return this.domainKeys.has(domainObjectName);
   }
 
-  // TODO
-  toSqlJoin() {}
+  toSqlJoin(): string {
+    return Join.toSqlJoinHelper(this.base, this.joinDomains);
+  }
+
+  // each non-EMPTY object in processedDomains should only have 1 key
+  static firstKey(obj: Record<string, any>) {
+    if (Object.keys.length !== 1) {
+      throw new Error("object must have precisely 1 key");
+    }
+    return Object.keys(obj)[0];
+  }
+
+  static toSqlJoinHelper(
+    root: string,
+    joinDomains: ProcessedJoinObject | EMPTY
+  ): string {
+    if (joinDomains === EMPTY) {
+      return "";
+    } else if (Array.isArray(joinDomains)) {
+      return joinDomains
+        .map((ele) => {
+          return Join.toSqlJoinHelper(root, ele);
+        })
+        .join(" ");
+    } else {
+      // joinDomins is an object that isn't EMPTY
+      // join root with current joinDomain
+      const Table = registry.getTable(root);
+      const OtherTable = registry.getTable(Join.firstKey(joinDomains));
+      const table = new Table();
+      const otherTable = new OtherTable();
+    }
+  }
 }

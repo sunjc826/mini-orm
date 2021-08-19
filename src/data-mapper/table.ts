@@ -1,18 +1,68 @@
+import { table } from "console";
 import _ from "lodash";
 import { formatDbColumn, formatResultSetVariable } from "../helpers";
-import { DataTypes, AllOptions, ColumnTypes, COLUMN_TYPE_MAP } from "../types";
+import {
+  DataTypes,
+  AllOptions,
+  ColumnTypes,
+  COLUMN_TYPE_MAP,
+  Int,
+} from "../types";
 
 namespace Table {
   export interface AddColumnsOptions {
     type: DataTypes;
     options: Partial<AllOptions>;
   }
+
+  // TODO: this interface can be used for composite keys, which aren't implemented for now
+  // i.e. for now, treat the arrays as length 1
+  /**
+   * Represents a belongs to relation. OwnTable belongs to OtherTable.
+   */
+  export interface References {
+    ownTableForeignKeys: Array<string>;
+    otherTableCandidateKeys: Array<string>;
+  }
+
+  /**
+   * Represents a has one/many relation. OwnTable has one/many OtherTable.
+   */
+  export interface ReferencedBy {
+    otherTableForeignKeys: Array<string>;
+    ownTableCandidateKeys: Array<string>;
+  }
 }
 
-// methods should probably be converted to static ones
+// TODO: methods should probably be converted to static ones
 export abstract class Table {
+  /**
+   * The actual db table name, snakecased.
+   */
   tableName: string;
+  /**
+   * A map of the form
+   * [tableColumnKey] : {
+   *  name (which is the actual snakecased db column name)
+   *  ...other properties
+   * }
+   * Note that [tableColumnKey] can still be camelcased
+   */
   columns: Record<string, ColumnTypes> = {};
+  // TODO: supports single column references for now
+  // can consider implementing composite keys in future
+  /**
+   * A map of the form
+   * [otherTableName] : {
+   *  ...other properties
+   * }
+   */
+  references: Record<string, Table.References> = {};
+  referencedBy: Record<string, Table.ReferencedBy> = {};
+
+  // TODO: add referencedBy hash
+
+  // TODO: Can also implement table constraints in future
 
   constructor(tableName: string) {
     this.tableName = _.snakeCase(tableName);
@@ -27,6 +77,17 @@ export abstract class Table {
   addColumn(name: string, type: DataTypes, options: Partial<AllOptions>): void {
     if (this.columns[name]) {
       throw new Error("column already exists");
+    }
+    if (
+      (type === "int" || type === "serial") &&
+      (options as Int.IntOptions).references
+    ) {
+      const { tableName, tableColumnKey } = (options as Int.IntOptions)
+        .references;
+      this.references[tableName] = {
+        ownTableForeignKeys: [name],
+        otherTableCandidateKeys: [tableColumnKey],
+      };
     }
     this.columns[name] = new COLUMN_TYPE_MAP[type](name, options);
   }
@@ -43,11 +104,29 @@ export abstract class Table {
 
   /**
    * Returns the actual DB column name of a certain column.
-   * @param name
+   * @param tableColumnKey
    * @returns Actual DB column name.
    */
-  getDbColumnName(name: string): string {
-    return this.columns[name].getName();
+  getDbColumnName(tableColumnKey: string): string {
+    return this.columns[tableColumnKey].getName();
+  }
+
+  /**
+   * Returns whether this table has a belongs to relation to another table.
+   * @param domainKey Domain key is a string key in the registry that is linked to the associated table.
+   * @returns Whether this table has a belongs to relation to another table.
+   */
+  belongsTo(domainKey: string): boolean {
+    return !!this.references[domainKey];
+  }
+
+  /**
+   * Returns whether this table has a has one or has many relation with another table.
+   * @param domainKey Domain key is a string key in the registry that is linked to the associated table.
+   * @returns Whether this table has a has one or has many relation with another table.
+   */
+  hasOneOrMany(domainKey: string): boolean {
+    return !!this.referencedBy[domainKey];
   }
 
   /**

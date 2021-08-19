@@ -17,17 +17,28 @@ const text = "text" as const;
 type text = typeof text;
 const int = "int" as const;
 type int = typeof int;
-const id = "id" as const;
-type id = typeof id;
+const serial = "serial" as const;
+type serial = typeof serial;
 const numeric = "numeric" as const;
 type numeric = typeof numeric;
 const bool = "bool" as const;
 type bool = typeof bool;
-export type DataTypes = varchar | text | int | id | numeric | bool;
+export type DataTypes = varchar | text | int | serial | numeric | bool;
 export abstract class ColumnType {
   abstract type: DataTypes;
-  name: string; // this may not be needed
+  /**
+   * The actual db column name, snakecased.
+   */
+  name: string;
+
+  /**
+   * Whether column is nullable.
+   */
   nullable: boolean;
+
+  /**
+   * Whether column value is unique to table.
+   */
   unique: boolean;
   constructor(name: string, options: Partial<ColumnOptions> = {}) {
     this.name = _.snakeCase(name);
@@ -36,32 +47,50 @@ export abstract class ColumnType {
     this.unique = unique;
   }
 
+  /**
+   * Returns db column name.
+   * @returns Sql string of column name.
+   */
   getName(): string {
     return this.name;
   }
 
+  /**
+   * Returns sql of data type.
+   * @returns Sql string of column type.
+   */
   getType(): string {
     return this.type;
   }
 
+  /**
+   * Returns sql of generic column constraints (other than primary key, foreign key).
+   * @returns Sql string of generic column constraints.
+   */
   getOptions(): string {
     return `${this.nullable ? "" : "nullable"} ${this.unique ? "unique" : ""}`;
   }
 
+  /**
+   * Returns full sql of column. e.g. for create table or alter table
+   * @returns Sql string of column, including name, type, constraints.
+   */
   getStringRep() {
     return `${this.getName()} ${this.getType().toUpperCase()} ${this.getOptions()}`;
   }
 }
 
-interface VarcharOptions extends ColumnOptions {
-  limit: number;
+export namespace Varchar {
+  export interface VarcharOptions extends ColumnOptions {
+    limit: number;
+  }
 }
 
 export class Varchar extends ColumnType {
   type = varchar;
   limit: number = 256;
 
-  constructor(name: string, options: Partial<VarcharOptions>) {
+  constructor(name: string, options: Partial<Varchar.VarcharOptions>) {
     super(name, options);
     if (options.limit) {
       this.limit = options.limit;
@@ -77,17 +106,34 @@ export class Text extends ColumnType {
   type = text;
 }
 
-interface IntOptions extends ColumnOptions {
-  variant: IntSize;
+export namespace Int {
+  export interface References {
+    tableName: string;
+    tableColumnKey: string; // actually a key
+  }
+  export interface IntOptions extends ColumnOptions {
+    variant: IntSize;
+    primaryKey: boolean;
+    references: References;
+  }
 }
+
 export class Int extends ColumnType {
   type = int;
-  variant: IntSize = "regular";
+  variant: IntSize;
+  primaryKey: boolean;
+  foreignKey: boolean;
+  references?: Int.References;
 
-  constructor(name: string, options: Partial<IntOptions>) {
+  constructor(name: string, options: Partial<Int.IntOptions>) {
     super(name, options);
-    if (options.variant) {
-      this.variant = options.variant;
+    this.variant = options.variant ?? "regular";
+    this.primaryKey = options.primaryKey ?? false;
+    if (options.references) {
+      this.foreignKey = true;
+      this.references = options.references;
+    } else {
+      this.foreignKey = false;
     }
   }
 
@@ -106,12 +152,12 @@ export class Int extends ColumnType {
   }
 }
 
-export class ID extends Int {
+export class Serial extends Int {
   type = int;
   variant: IntSize = "regular";
   autoGenerateExclusively: boolean = true;
 
-  constructor(name: string, options: Partial<IntOptions>) {
+  constructor(name: string, options: Partial<Int.IntOptions>) {
     super(name, options);
   }
 
@@ -130,14 +176,14 @@ export class Bool extends ColumnType {
   type = bool;
 }
 
-export type ColumnTypes = Varchar | Text | Int | ID | Numeric | Bool;
-export type AllOptions = VarcharOptions | IntOptions;
+export type ColumnTypes = Varchar | Text | Int | Serial | Numeric | Bool;
+export type AllOptions = Varchar.VarcharOptions | Int.IntOptions;
 
 export const COLUMN_TYPE_MAP: Record<DataTypes, Constructor<ColumnTypes>> = {
   varchar: Varchar,
   text: Text,
   int: Int,
-  id: ID,
+  serial: Serial,
   numeric: Numeric,
   bool: Bool,
 } as const;

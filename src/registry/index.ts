@@ -9,6 +9,18 @@ interface RegistryItem {
   DataMapper: Constructor<DataMapper>;
 }
 
+/**
+ * registry is a mapping of the following form
+ * [domainKey] : {
+ *  DomainObjectClass
+ *  DataMapperClass
+ *  TableClass
+ * }
+ *
+ * As of now, for each db table there will be a corresponding domain object,
+ * which makes things easier.
+ * In future this may change.
+ */
 class Registry {
   registry: Record<string, RegistryItem> = {};
 
