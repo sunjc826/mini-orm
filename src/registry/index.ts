@@ -1,4 +1,5 @@
-import { DataMapper, Table } from "../data-mapper";
+import { DataMapper } from "../data-mapper";
+import { Table } from "../data-mapper/table";
 import { DomainObject } from "../domain";
 import { Constructor } from "../types";
 
@@ -38,4 +39,3 @@ class Registry {
 }
 
 export const registry = new Registry();
-
