@@ -187,7 +187,9 @@ class Join {
   }
 
   toSqlJoin(): string {
-    return Join.toSqlJoinHelper(this.base, this.joinDomains);
+    const sqlJoinPartArr = Join.toSqlJoinHelper(this.base, this.joinDomains);
+    const sqlJoinPart = sqlJoinPartArr.join(" INNER JOIN ON ");
+    return sqlJoinPart;
   }
 
   // each non-EMPTY object in processedDomains should only have 1 key
@@ -199,24 +201,55 @@ class Join {
   }
 
   static toSqlJoinHelper(
-    root: string,
+    rootDomainKey: string,
     joinDomains: ProcessedJoinObject | EMPTY
-  ): string {
+  ): Array<string> {
     if (joinDomains === EMPTY) {
-      return "";
+      return [];
     } else if (Array.isArray(joinDomains)) {
-      return joinDomains
-        .map((ele) => {
-          return Join.toSqlJoinHelper(root, ele);
-        })
-        .join(" ");
+      return joinDomains.flatMap((ele) => {
+        return Join.toSqlJoinHelper(rootDomainKey, ele);
+      });
     } else {
       // joinDomins is an object that isn't EMPTY
-      // join root with current joinDomain
-      const Table = registry.getTable(root);
-      const OtherTable = registry.getTable(Join.firstKey(joinDomains));
+      const Table = registry.getTable(rootDomainKey);
+      const otherDomainKey = Join.firstKey(joinDomains);
+      const OtherTable = registry.getTable(otherDomainKey);
       const table = new Table();
       const otherTable = new OtherTable();
+      const sqlArr = [];
+      if (table.belongsTo(otherDomainKey)) {
+        const reference = table.getReference(otherDomainKey);
+        for (let i = 0; i < reference.ownTableForeignKeys.length; i++) {
+          sqlArr.push(
+            `${formatDbColumn(
+              table.tableName,
+              reference.ownTableForeignKeys[i]
+            )} = ${formatDbColumn(
+              otherTable.tableName,
+              reference.otherTableCandidateKeys[i]
+            )}`
+          );
+        }
+      } else if (otherTable.belongsTo(rootDomainKey)) {
+        const reference = otherTable.getReference(rootDomainKey);
+        const sqlArr = [];
+        for (let i = 0; i < reference.ownTableForeignKeys.length; i++) {
+          sqlArr.push(
+            `${formatDbColumn(
+              otherTable.tableName,
+              reference.ownTableForeignKeys[i]
+            )} = ${formatDbColumn(
+              table.tableName,
+              reference.otherTableCandidateKeys[i]
+            )}`
+          );
+        }
+      } else {
+        throw new Error("no relation found.");
+      }
+      const sql = sqlArr.join(" AND ");
+      return [sql];
     }
   }
 }

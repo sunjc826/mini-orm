@@ -20,7 +20,7 @@ namespace Table {
   /**
    * Represents a belongs to relation. OwnTable belongs to OtherTable.
    */
-  export interface References {
+  export interface Reference {
     ownTableForeignKeys: Array<string>;
     otherTableCandidateKeys: Array<string>;
   }
@@ -51,16 +51,16 @@ export abstract class Table {
   columns: Record<string, ColumnTypes> = {};
   // TODO: supports single column references for now
   // can consider implementing composite keys in future
+  // Note: We also assume that 2 distinct table can only have 1 reference, this is why
+  // the table name itself is used as a key here
   /**
    * A map of the form
    * [otherTableName] : {
    *  ...other properties
    * }
    */
-  references: Record<string, Table.References> = {};
+  references: Record<string, Table.Reference> = {};
   referencedBy: Record<string, Table.ReferencedBy> = {};
-
-  // TODO: add referencedBy hash
 
   // TODO: Can also implement table constraints in future
 
@@ -118,6 +118,10 @@ export abstract class Table {
    */
   belongsTo(domainKey: string): boolean {
     return !!this.references[domainKey];
+  }
+
+  getReference(domainKey: string): Table.Reference {
+    return this.references[domainKey];
   }
 
   /**
