@@ -8,9 +8,8 @@ interface Query {
 }
 
 export class DbClient {
-
-  config: ClientConfig
-  client: Client
+  config: ClientConfig;
+  client: Client;
 
   constructor(clientConfig: ClientConfig) {
     this.config = clientConfig;
@@ -34,10 +33,10 @@ export class DbClient {
     }
   }
 
-  async query(queryText: string, values?: any[]): Promise<ResultSet<any> | null> {
+  async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
     const success = await this.connect();
     if (!success) {
-      return null;
+      return [];
     }
     const result = await this.client.query(queryText, values);
     await this.close();
@@ -45,11 +44,8 @@ export class DbClient {
   }
 
   // TODO
-  async queryMultiple(queries: Array<Query> | Record<string, Query>) {
-
-  }
+  async queryMultiple(queries: Array<Query> | Record<string, Query>) {}
 }
-
 
 // const methodMissing = (obj: any) => {
 //   new Proxy(obj, ())

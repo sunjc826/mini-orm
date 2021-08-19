@@ -37,6 +37,23 @@ export function formatDbColumn(tableName: string, dbColName: string) {
  * @param dbColName
  * @returns
  */
-export function formatResultSetVariable(tableName: string, dbColName: string) {
+export function formatResultSetColumnName(
+  tableName: string,
+  dbColName: string
+) {
   return `${tableName}-${dbColName}`;
+}
+
+export function splitResultSetColumnName(rowString: string) {
+  const [tableName, dbColName] = rowString.split("-");
+  return { tableName, dbColName };
+}
+
+/**
+ * 
+ * @param tableName Snakecased table name.
+ * @returns Domain key string.
+ */
+export function extractDomainKeyFromTable(tableName: string) {
+  return tableName.replace("", "");
 }

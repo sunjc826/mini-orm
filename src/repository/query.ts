@@ -1,5 +1,5 @@
-import _, { join } from "lodash";
-import { ColumnMap, DataMapper, MetaData } from "../data-mapper";
+import _ from "lodash";
+import { ColumnMap, DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
 import { registry } from "../registry";
@@ -24,14 +24,22 @@ export class Query {
     this.joinDomains = new Join(base);
   }
 
+  /**
+   * Adds a criterion to the query object.
+   * @param criterion Query criterion, to be converted to where clause.
+   */
   where(criterion: CriterionObject) {
     criterion.domainObject ||= this.base;
     criterion.sqlOperator ||= EQUALS;
     this.criteria[criterion.domainObject].push(new Criterion(criterion));
   }
 
-  joins(domains: JoinObject) {
-    this.joinDomains.merge(domains);
+  /**
+   * Joins base table with other tables
+   * @param domainKeys Domain
+   */
+  joins(domainKeys: JoinObject) {
+    this.joinDomains.merge(domainKeys);
   }
 
   isCriteriaValid(): boolean {
@@ -52,7 +60,6 @@ export class Query {
    */
   toQueryString(): string {
     const sqlSelectPartArr = [];
-    const sqlFromPartArr = [];
     const sqlWherePartArr = [];
 
     for (const [key, criteriaArr] of Object.entries(this.criteria)) {
@@ -65,11 +72,11 @@ export class Query {
       const whereStrings = criteriaArr.map((criterion) => {
         return criterion.toSqlWhere(table, mapper);
       });
-      sqlFromPartArr.push(table.tableName);
       sqlWherePartArr.push(...whereStrings);
     }
+
     const sqlSelectPart = sqlSelectPartArr.join(", ");
-    const sqlFromPart = sqlFromPartArr.join(", ");
+    const sqlFromPart = this.joinDomains.toSqlJoin();
     const sqlWherePart = sqlWherePartArr.join(" AND ");
     const sql = `SELECT ${sqlSelectPart} FROM ${sqlFromPart} WHERE ${sqlWherePart};`;
 
@@ -134,7 +141,7 @@ class Criterion {
     if (!field) {
       throw Error("no match for domain object field");
     }
-    const tableKey = (field as ColumnMap).tableColumnName;
+    const tableKey = (field as ColumnMap).tableColumnKey;
     const actualDbColumnName = table.getDbColumnName(tableKey);
     return `${formatDbColumn(table.tableName, actualDbColumnName)} ${
       this.sqlOperator
@@ -142,7 +149,6 @@ class Criterion {
   }
 }
 
-// allows chaining of joins
 // Note that the names here are names of the domain keys and not the underlying tables
 class Join {
   private base: string;
@@ -187,8 +193,12 @@ class Join {
   }
 
   toSqlJoin(): string {
-    const sqlJoinPartArr = Join.toSqlJoinHelper(this.base, this.joinDomains);
-    const sqlJoinPart = sqlJoinPartArr.join(" INNER JOIN ON ");
+    const BaseTable = registry.getTable(this.base);
+    const baseTableName = new BaseTable().tableName;
+    const sqlJoinPart = `${baseTableName} ${Join.toSqlJoinHelper(
+      this.base,
+      this.joinDomains
+    )}`;
     return sqlJoinPart;
   }
 
@@ -203,13 +213,13 @@ class Join {
   static toSqlJoinHelper(
     rootDomainKey: string,
     joinDomains: ProcessedJoinObject | EMPTY
-  ): Array<string> {
+  ): string {
     if (joinDomains === EMPTY) {
-      return [];
+      return "";
     } else if (Array.isArray(joinDomains)) {
-      return joinDomains.flatMap((ele) => {
-        return Join.toSqlJoinHelper(rootDomainKey, ele);
-      });
+      return joinDomains
+        .map((ele) => Join.toSqlJoinHelper(rootDomainKey, ele))
+        .join(" ");
     } else {
       // joinDomins is an object that isn't EMPTY
       const Table = registry.getTable(rootDomainKey);
@@ -248,8 +258,10 @@ class Join {
       } else {
         throw new Error("no relation found.");
       }
-      const sql = sqlArr.join(" AND ");
-      return [sql];
+      const sql = `INNER JOIN ${otherTable.tableName} ON ${sqlArr.join(
+        " AND "
+      )}`;
+      return sql;
     }
   }
 }

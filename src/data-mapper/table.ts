@@ -1,6 +1,6 @@
 import { table } from "console";
 import _ from "lodash";
-import { formatDbColumn, formatResultSetVariable } from "../helpers";
+import { formatDbColumn, formatResultSetColumnName } from "../helpers";
 import {
   DataTypes,
   AllOptions,
@@ -156,6 +156,6 @@ export abstract class Table {
   }
 
   private getTableColumnKey(dbTableName: string, dbColName: string): string {
-    return formatResultSetVariable(dbTableName, dbColName);
+    return formatResultSetColumnName(dbTableName, dbColName);
   }
 }
