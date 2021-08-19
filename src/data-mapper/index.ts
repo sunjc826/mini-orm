@@ -1,6 +1,13 @@
 import _ from "lodash";
 import { DbClient } from "../connect";
-import { Constructor } from "../types";
+import {
+  AllOptions,
+  ColumnType,
+  ColumnTypes,
+  COLUMN_TYPE_MAP,
+  Constructor,
+  DataTypes,
+} from "../types";
 
 interface ConstructorParams {
   TableClass: Constructor<Table>;
@@ -85,13 +92,69 @@ class ColumnMap extends MetaDataField {
   }
 }
 
-export abstract class Table {
-  tableName: string;
-  columns: Record<string, Column> = {};
-  selectColumns() {}
+namespace Table {
+  export interface AddColumnsOptions {
+    type: DataTypes;
+    options: Partial<AllOptions>;
+  }
 }
 
-// due to my lack of experience in type reflection, I will stick to regular javascript objects instead
-class Column {
-  type: "varchar" | "text" | "";
+// methods should probably be converted to static ones
+export abstract class Table {
+  tableName: string;
+  columns: Record<string, ColumnTypes> = {};
+
+  /**
+   * Adds a column to the table.
+   * @param name Column name key. Will be converted to snakecase when entered into DB.
+   * @param type DB type.
+   * @param options DB column options.
+   */
+  addColumn(name: string, type: DataTypes, options: Partial<AllOptions>): void {
+    if (this.columns[name]) {
+      throw new Error("column already exists");
+    }
+    this.columns[name] = new COLUMN_TYPE_MAP[type](name, options);
+  }
+
+  /**
+   * Adds multiple columns to the table.
+   * @param obj A hash of with keys as db column name and values as column options.
+   */
+  addColumns(obj: Record<string, Table.AddColumnsOptions>): void {
+    for (const [name, addColumnsOptions] of Object.entries(obj)) {
+      this.addColumn(name, addColumnsOptions.type, addColumnsOptions.options);
+    }
+  }
+
+  /**
+   * Returns the actual DB column name of a certain column.
+   * @param name
+   * @returns Actual DB column name.
+   */
+  getDbColumnName(name: string): string {
+    return this.columns[name].getName();
+  }
+
+  /**
+   * Returns a sql string representing the select portion of the columns queried.
+   * Defaults to all columns of the table. Does not include the SELECT keyword.
+   * @param columnNames
+   */
+  getSelectColumnsString(...columnNames: Array<string>) {
+    let sql = "";
+    for (const column of columnNames) {
+      const dbTableName = this.tableName;
+      const dbColName = this.getDbColumnName(column);
+      sql += `${dbTableName}.${dbColName} AS ${this.getTableColumnName(
+        dbTableName,
+        dbColName
+      )}`;
+    }
+    return sql;
+  }
+
+  private getTableColumnName(dbTableName: string, dbColName: string) {
+    return `${dbTableName}_${dbColName}`;
+  }
 }

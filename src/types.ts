@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export type Constructor<T> = new (...args: any) => T;
 
 type IntSize = "big" | "regular" | "small";
@@ -7,14 +9,35 @@ interface ColumnOptions {
   unique: boolean;
 }
 
-abstract class ColumnType {
-  abstract type: string;
+// due to my lack of experience in type reflection, I will stick to regular javascript objects instead
+
+const varchar = "varchar" as const;
+type varchar = typeof varchar;
+const text = "text" as const;
+type text = typeof text;
+const int = "int" as const;
+type int = typeof int;
+const id = "id" as const;
+type id = typeof id;
+const numeric = "numeric" as const;
+type numeric = typeof numeric;
+const bool = "bool" as const;
+type bool = typeof bool;
+export type DataTypes = varchar | text | int | id | numeric | bool;
+export abstract class ColumnType {
+  abstract type: DataTypes;
+  name: string; // this may not be needed
   nullable: boolean;
   unique: boolean;
-  constructor(options: Partial<ColumnOptions> = {}) {
+  constructor(name: string, options: Partial<ColumnOptions> = {}) {
+    this.name = _.snakeCase(name);
     const { nullable = true, unique = false } = options;
     this.nullable = nullable;
     this.unique = unique;
+  }
+
+  getName(): string {
+    return this.name;
   }
 
   getType(): string {
@@ -24,15 +47,25 @@ abstract class ColumnType {
   getOptions(): string {
     return `${this.nullable ? "" : "nullable"} ${this.unique ? "unique" : ""}`;
   }
+
+  getStringRep() {
+    return `${this.getName()} ${this.getType().toUpperCase()} ${this.getOptions()}`;
+  }
+}
+
+interface VarcharOptions extends ColumnOptions {
+  limit: number;
 }
 
 export class Varchar extends ColumnType {
-  type = "varchar";
-  limit: number;
+  type = varchar;
+  limit: number = 256;
 
-  constructor(limit: number, options: Partial<ColumnOptions>) {
-    super(options);
-    this.limit = limit;
+  constructor(name: string, options: Partial<VarcharOptions>) {
+    super(name, options);
+    if (options.limit) {
+      this.limit = options.limit;
+    }
   }
 
   getType() {
@@ -41,16 +74,21 @@ export class Varchar extends ColumnType {
 }
 
 export class Text extends ColumnType {
-  type = "text";
+  type = text;
 }
 
+interface IntOptions extends ColumnOptions {
+  variant: IntSize;
+}
 export class Int extends ColumnType {
-  type = "integer";
+  type = int;
   variant: IntSize = "regular";
 
-  constructor(variant: IntSize, options: Partial<ColumnOptions>) {
-    super(options);
-    this.variant = variant;
+  constructor(name: string, options: Partial<IntOptions>) {
+    super(name, options);
+    if (options.variant) {
+      this.variant = options.variant;
+    }
   }
 
   getType(): string {
@@ -69,25 +107,37 @@ export class Int extends ColumnType {
 }
 
 export class ID extends Int {
-  type = "serial";
+  type = int;
   variant: IntSize = "regular";
   autoGenerateExclusively: boolean = true;
 
-  constructor(variant: IntSize, options: Partial<ColumnOptions>) {
-    super(variant, options);
+  constructor(name: string, options: Partial<IntOptions>) {
+    super(name, options);
   }
 
   getType() {
-    return `${super.getType()} generated ${
-      this.autoGenerateExclusively ? "always" : "by default"
-    } as identity`;
+    return `${super.getType()} GENERATED ${
+      this.autoGenerateExclusively ? "ALWAYS" : "BY DEFAULT"
+    } AS IDENTITY`;
   }
 }
 
 export class Numeric extends ColumnType {
-  type = "numeric";
+  type = numeric;
 }
 
-export class Boolean extends ColumnType {
-  type = "bool";
+export class Bool extends ColumnType {
+  type = bool;
 }
+
+export type ColumnTypes = Varchar | Text | Int | ID | Numeric | Bool;
+export type AllOptions = VarcharOptions | IntOptions;
+
+export const COLUMN_TYPE_MAP: Record<DataTypes, Constructor<ColumnTypes>> = {
+  varchar: Varchar,
+  text: Text,
+  int: Int,
+  id: ID,
+  numeric: Numeric,
+  bool: Bool,
+} as const;

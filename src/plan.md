@@ -49,3 +49,7 @@ Value objects come later.
 - implement layer supertype
 
 When object changes, update unit of work
+
+
+Notes:
+- String#concat and += are both faster than [].join
