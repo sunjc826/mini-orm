@@ -1,5 +1,6 @@
 import { DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
+import { UnitOfWork } from "../data-mapper/unitOfWork";
 import { DomainObject } from "../domain";
 import { Constructor } from "../types";
 
@@ -23,7 +24,10 @@ interface RegistryItem {
  */
 class Registry {
   registry: Record<string, RegistryItem> = {};
-
+  unitOfWork: UnitOfWork;
+  constructor() {
+    this.unitOfWork = new UnitOfWork();
+  }
   register(
     item: string,
     Table: Constructor<Table>,
@@ -35,6 +39,7 @@ class Registry {
       DomainObject,
       DataMapper,
     };
+    this.unitOfWork.register(item);
   }
 
   getTable(key: string) {

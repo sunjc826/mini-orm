@@ -50,10 +50,14 @@ export function splitResultSetColumnName(rowString: string) {
 }
 
 /**
- * 
+ * Returns domain key from the given db table name.
  * @param tableName Snakecased table name.
  * @returns Domain key string.
  */
 export function extractDomainKeyFromTable(tableName: string) {
-  return tableName.replace("", "");
+  return _.camelCase(tableName);
+}
+
+export function dbColumnNameToColumnKey(dbColName: string) {
+  return _.camelCase(dbColName);
 }
