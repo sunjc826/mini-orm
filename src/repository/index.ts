@@ -9,9 +9,7 @@ class Repository {
   }
 }
 
-// doesn't work well with typescript unfortunately
-// need to use manual delegation
-function createRepoProxy(repo: Repository) {
+function createRepoProxy(repo: Repository): Repository & RelationalStrategy {
   return new Proxy(repo, {
     get(target, prop, _receiver) {
       let result;
@@ -25,7 +23,9 @@ function createRepoProxy(repo: Repository) {
         return typeof result === "function" ? result.bind(target) : result;
       }
     },
-  });
+  }) as any as Repository & RelationalStrategy;
 }
 
-export const repository = new Repository(new RelationalStrategy());
+export const repository = createRepoProxy(
+  new Repository(new RelationalStrategy())
+);

@@ -8,6 +8,7 @@ import {
 } from "../helpers";
 import { registry } from "../registry";
 import { Constructor } from "../types";
+import { getVirtualDomainObject } from "./lazyLoad";
 import { Table } from "./table";
 
 namespace DataMapper {
@@ -80,15 +81,16 @@ export abstract class DataMapper {
         const table = new Table();
         for (const [tableColumnKey, value] of Object.entries(tableObj)) {
           // TODO: O(n^2) find here, kinda bad.
+          let inMemoryValue = value;
           if (table.isForeignKey(tableColumnKey)) {
-            table.foreignKeyDomain(tableColumnKey);
-            // TODO: Create proxy
+            const foreignDomainKey = table.foreignKeyDomain(tableColumnKey)!;
+            inMemoryValue = getVirtualDomainObject(foreignDomainKey, value as number);
           }
 
           const metadataField = mapper.metadata.findByTable(tableColumnKey);
           switch (metadataField?.variant) {
             case MetaDataObjectTypes.columnMap: {
-              domainObj[metadataField.domainFieldName] = value;
+              domainObj[metadataField.domainFieldName] = inMemoryValue;
               break;
             }
             default: {

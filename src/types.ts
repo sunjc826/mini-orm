@@ -97,6 +97,10 @@ export class Varchar extends ColumnType {
     }
   }
 
+  getTypedValue(stringValue: string): string {
+    return stringValue;
+  }
+
   getType() {
     return `${this.type}(${this.limit})`;
   }
@@ -137,6 +141,10 @@ export class Int extends ColumnType {
     }
   }
 
+  getTypedValue(stringValue: string): number {
+    return Number.parseInt(stringValue);
+  }
+
   getType(): string {
     switch (this.variant) {
       case "big": {
@@ -170,10 +178,22 @@ export class Serial extends Int {
 
 export class Numeric extends ColumnType {
   type = numeric;
+
+  getTypedValue(stringValue: string): number {
+    return Number.parseFloat(stringValue);
+  }
 }
 
 export class Bool extends ColumnType {
   type = bool;
+
+  getTypedValue(stringValue: string): boolean {
+    if (stringValue === "true") {
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 
 export type ColumnTypes = Varchar | Text | Int | Serial | Numeric | Bool;

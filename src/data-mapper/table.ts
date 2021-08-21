@@ -142,7 +142,7 @@ export abstract class Table {
     return tableColumnKey in this.foreignKeys;
   }
 
-  // TODO: this only works for a single column acting as a foriegn key column
+  // TODO: this only works for a single column acting as a foreign key column
   // table inheritance would not work
   /**
    * Returns the table key that the foreignKey points to. Returns null if tableColumn is not a foreign key.
