@@ -68,6 +68,8 @@ export abstract class Table {
     this.tableName = _.snakeCase(tableName);
   }
 
+  static topoSort() {}
+
   /**
    * Adds a column to the table.
    * @param name Column name key. Will be converted to snakecase when entered into DB.

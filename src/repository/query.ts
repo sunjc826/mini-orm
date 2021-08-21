@@ -3,7 +3,7 @@ import { ColumnMap, DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
 import { registry } from "../registry";
-import { EMPTY, EQUALS } from "./types";
+import { EMPTY, Operators } from "./types";
 
 // NOTE: Query objects operate at the Repository layer, which sits on top of the DataMapper
 // hence the object fields here belong to the domain objects and not the database tables
@@ -30,7 +30,7 @@ export class Query {
    */
   where(criterion: CriterionObject) {
     criterion.domainObject ||= this.base;
-    criterion.sqlOperator ||= EQUALS;
+    criterion.sqlOperator ||= Operators.EQ;
     this.criteria[criterion.domainObject].push(new Criterion(criterion));
   }
 
@@ -90,7 +90,7 @@ export class Query {
 }
 
 export interface CriterionObject {
-  sqlOperator?: string;
+  sqlOperator?: Operators;
   domainObject?: string;
   domainObjectField: string;
   value: any;
@@ -122,8 +122,11 @@ class Criterion {
     domainObjectField,
     value,
   }: CriterionObject) {
-    this.sqlOperator = sqlOperator!;
-    this.domainObject = domainObject!;
+    if (!sqlOperator || !domainObject) {
+      throw new Error("invalid creation of Criterion");
+    }
+    this.sqlOperator = sqlOperator;
+    this.domainObject = domainObject;
     this.domainObjectField = domainObjectField;
     this.value = value;
   }

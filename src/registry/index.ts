@@ -53,6 +53,10 @@ class Registry {
   getMapper(key: string) {
     return this.registry[key]?.DataMapper;
   }
+
+  getIdentityMap() {
+    return this.unitOfWork.identityMap;
+  }
 }
 
 export const registry = new Registry();

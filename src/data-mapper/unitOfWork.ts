@@ -1,3 +1,5 @@
+import { DomainObject } from "../domain";
+
 export class UnitOfWork {
   identityMap: IdentityMap;
 
@@ -15,5 +17,16 @@ class IdentityMap {
 
   register(domainKey: string) {
     this.map[domainKey] = [];
+  }
+
+  find(domainKey: string, id: number) {
+    if (!this.map[domainKey]) {
+      throw new Error("domainKey not registered");
+    }
+    return this.map[domainKey][id];
+  }
+
+  insert(domainKey: string, id: number, domainObject: DomainObject) {
+    this.map[domainKey][id] = domainObject;
   }
 }

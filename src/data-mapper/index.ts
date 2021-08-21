@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { DbClient, ResultSet } from "../connect";
+import { DomainObject } from "../domain";
 import {
   dbColumnNameToColumnKey,
   extractDomainKeyFromTable,
@@ -41,7 +42,6 @@ export abstract class DataMapper {
   async select(sql: string) {
     const resultSet = await this.dbClient.query(sql);
     this.resultSetToDomainObjects(resultSet);
-    // TODO: map these rows to objects
   }
 
   /**
@@ -85,7 +85,7 @@ export abstract class DataMapper {
             }
           }
         }
-        new DomainObj(domainObj);
+        return new DomainObj(domainObj);
         // TODO: Identity map
       }
     });
