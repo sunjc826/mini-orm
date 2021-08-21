@@ -62,12 +62,15 @@ export abstract class Table {
   references: Record<string, Table.Reference> = {};
   referencedBy: Record<string, Table.ReferencedBy> = {};
 
+  foreignKeys: Record<string, string> = {};
+
   // TODO: Can also implement table constraints in future
 
   constructor(tableName: string) {
     this.tableName = _.snakeCase(tableName);
   }
 
+  // TODO
   static topoSort() {}
 
   /**
@@ -135,6 +138,21 @@ export abstract class Table {
     return !!this.referencedBy[domainKey];
   }
 
+  isForeignKey(tableColumnKey: string) {
+    return tableColumnKey in this.foreignKeys;
+  }
+
+  // TODO: this only works for a single column acting as a foriegn key column
+  // table inheritance would not work
+  /**
+   * Returns the table key that the foreignKey points to. Returns null if tableColumn is not a foreign key.
+   * @param tableColumnKey
+   * @returns
+   */
+  foreignKeyDomain(tableColumnKey: string) {
+    return this.foreignKeys[tableColumnKey] || null;
+  }
+
   /**
    * Returns a sql string representing the select portion of the columns queried.
    * Defaults to all columns of the table. Does not include the SELECT keyword.
@@ -152,6 +170,7 @@ export abstract class Table {
         )}`
       );
     }
+
     // join is actually slower than concat, but it's more convenient here
     const sql = sqlArr.join(", ");
     return sql;

@@ -1,27 +1,29 @@
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
+import { repository } from "../repository";
 
 export class ValueHolder<T extends DomainObject> {
-  value?: T;
+  value?: T | Array<T>;
   isLoaded: boolean = false;
   // TODO: we assume foreign keys are single numbers for now
   domainKey: string;
-  foreignKey: number;
+  id: number;
 
-  constructor(domainKey: string, foreignKey: number) {
+  constructor(domainKey: string, id: number) {
     this.domainKey = domainKey;
-    this.foreignKey = foreignKey;
+    this.id = id;
   }
 
-  private loadValue() {
+  private async loadValue() {
     // need to do 2 things here
     // first check identity map if object is loaded into memory
     // otherwise load from database
     const idMap = registry.getIdentityMap();
-    const obj = idMap.find(this.domainKey, this.foreignKey);
+    let obj = idMap.find(this.domainKey, this.id);
     if (obj === undefined) {
-      // TODO: load from db
+      obj = await repository.strategy.findById(this.id);
     }
+    this.value = obj;
     this.isLoaded = true;
   }
   getProp(prop: string) {
@@ -33,9 +35,9 @@ export class ValueHolder<T extends DomainObject> {
   }
 }
 
-export function createVirtualProxy<T>(
+export function createVirtualProxy<T extends DomainObject>(
   valueHolder: ValueHolder<T>,
-  permit = ["foreignKey"]
+  permit = ["id"]
 ) {
   const handler = {
     get(target: ValueHolder<T>, prop: string) {

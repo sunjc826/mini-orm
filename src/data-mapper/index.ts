@@ -70,14 +70,21 @@ export abstract class DataMapper {
         ] = value;
       }
 
-      // actually create the domain objects
+      // create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
         const DomainObj = registry.getDomainObject(domainKey);
+        const Table = registry.getTable(domainKey);
         const mapper = new Mapper();
         const domainObj: Record<string, any> = {};
+        const table = new Table();
         for (const [tableColumnKey, value] of Object.entries(tableObj)) {
           // TODO: O(n^2) find here, kinda bad.
+          if (table.isForeignKey(tableColumnKey)) {
+            table.foreignKeyDomain(tableColumnKey);
+            // TODO: Create proxy
+          }
+
           const metadataField = mapper.metadata.findByTable(tableColumnKey);
           switch (metadataField?.variant) {
             case MetaDataObjectTypes.columnMap: {
@@ -89,15 +96,17 @@ export abstract class DataMapper {
             }
           }
         }
-        const actualDomainObj = new DomainObj(domainObj);
-        // TODO: Data mapper is responsible for saving to Identity map
 
+        const actualDomainObj = new DomainObj(domainObj);
+        registry.getIdentityMap().insert(domainKey, actualDomainObj);
         if (domainKey === this.domainKey) {
           requestedDomainObj = actualDomainObj;
         }
       }
 
       if (!requestedDomainObj) {
+        // each row must produce instance of the domain object
+        // Note: This may not be the case if right joins are used, so this may need to change in future.
         throw new Error("unexpected missing data from table row");
       }
 

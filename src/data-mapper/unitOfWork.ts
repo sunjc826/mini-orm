@@ -26,7 +26,12 @@ class IdentityMap {
     return this.map[domainKey][id];
   }
 
-  insert(domainKey: string, id: number, domainObject: DomainObject) {
+  insert(
+    domainKey: string,
+    domainObject: DomainObject,
+    domainObjectId?: number
+  ) {
+    const id = domainObjectId || domainObject.id;
     this.map[domainKey][id] = domainObject;
   }
 }
