@@ -25,6 +25,7 @@ namespace MetaDataObjectTypes {
 
 export abstract class DataMapper {
   // TODO: config
+  domainKey: string;
   dbClient = new DbClient({});
   metadata: MetaData;
 
@@ -35,22 +36,24 @@ export abstract class DataMapper {
     }
   }
 
+  // TODO: This method looks like it should be static (in fact the whole data mapper shld be static)
   /**
    * Returns a result set when given a sql query.
    * @param sql Sql query string.
    */
-  async select(sql: string) {
+  async select(sql: string): Promise<Array<DomainObject>> {
     const resultSet = await this.dbClient.query(sql);
-    this.resultSetToDomainObjects(resultSet);
+    return this.resultSetToDomainObjects(resultSet);
   }
 
   /**
    * Converts db rows to domain objects.
    * @param resultSet
    */
-  resultSetToDomainObjects(resultSet: ResultSet<any>) {
-    resultSet.forEach((row) => {
+  private resultSetToDomainObjects(resultSet: ResultSet<any>) {
+    const domainObjects = resultSet.map((row) => {
       const tableColumnMap: Record<string, any> = {};
+      let requestedDomainObj: DomainObject | null = null;
       for (const [column, value] of Object.entries(row)) {
         /**
          * A map of the form
@@ -66,6 +69,7 @@ export abstract class DataMapper {
           dbColumnNameToColumnKey(dbColName)
         ] = value;
       }
+
       // actually create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
@@ -85,10 +89,21 @@ export abstract class DataMapper {
             }
           }
         }
-        return new DomainObj(domainObj);
-        // TODO: Identity map
+        const actualDomainObj = new DomainObj(domainObj);
+        // TODO: Data mapper is responsible for saving to Identity map
+
+        if (domainKey === this.domainKey) {
+          requestedDomainObj = actualDomainObj;
+        }
       }
+
+      if (!requestedDomainObj) {
+        throw new Error("unexpected missing data from table row");
+      }
+
+      return requestedDomainObj;
     });
+    return domainObjects;
   }
 }
 

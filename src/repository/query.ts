@@ -15,8 +15,9 @@ export class Query {
   // the base represents the base domain object using the query
   // whatever is returned will be mapped to the domain object
   base: string;
-  criteria: Record<string, Array<Criterion>> = {};
-  joinDomains: Join;
+  private criteria: Record<string, Array<Criterion>> = {};
+  private joinDomains: Join;
+  private _limit: number;
   // to support includes functionality in future
   constructor(base: string) {
     this.base = base;
@@ -40,6 +41,16 @@ export class Query {
    */
   joins(domainKeys: JoinObject) {
     this.joinDomains.merge(domainKeys);
+  }
+
+  limit(count: number) {
+    if (!Number.isInteger(count)) {
+      throw new Error("limit must be an integer");
+    }
+    if (count <= 0) {
+      throw new Error("limit must be positive");
+    }
+    this._limit = count;
   }
 
   isCriteriaValid(): boolean {
@@ -78,7 +89,8 @@ export class Query {
     const sqlSelectPart = sqlSelectPartArr.join(", ");
     const sqlFromPart = this.joinDomains.toSqlJoin();
     const sqlWherePart = sqlWherePartArr.join(" AND ");
-    const sql = `SELECT ${sqlSelectPart} FROM ${sqlFromPart} WHERE ${sqlWherePart};`;
+    const sqlLimitPart = this._limit ? `LIMIT ${this._limit}` : "";
+    const sql = `SELECT ${sqlSelectPart} FROM ${sqlFromPart} WHERE ${sqlWherePart} ${sqlLimitPart};`;
 
     return sql;
   }

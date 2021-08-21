@@ -1,3 +1,4 @@
+import { DomainObject } from "../domain";
 import { registry } from "../registry";
 import { CriterionObject, JoinObject, Query } from "./query";
 
@@ -7,24 +8,31 @@ class Repository {
 
 interface RepositoryStrategy {
   currentQuery: Query;
-  where(criterion: CriterionObject): void;
-  joins(domains: JoinObject): void;
+  where(criterion: CriterionObject): RepositoryStrategy;
+  joins(domains: JoinObject): RepositoryStrategy;
+  limit(count: number): RepositoryStrategy;
+  getSingle(): RepositoryStrategy;
 }
 
 class RelationalStrategy implements RepositoryStrategy {
   currentQuery: Query;
+  isSingle: boolean;
 
-  newQuery(base: string) {
+  newQuery(base: string): RelationalStrategy {
     this.currentQuery = new Query(base);
+    this.isSingle = false;
+    return this;
   }
 
   /**
    * Add a where condition to the current query. Can be chained before or after,
    * as long as the final combination of joins and criteria is valid.
    * @param criterion Condition to be added.
+   * @returns Self to be further chained.
    */
-  where(criterion: CriterionObject): void {
+  where(criterion: CriterionObject): RelationalStrategy {
     this.currentQuery.where(criterion);
+    return this;
   }
 
   /**
@@ -52,18 +60,44 @@ class RelationalStrategy implements RepositoryStrategy {
    * Heavily inspired by Ruby on Rails.
    *
    * @param domains Hash of domain keys to perform the joins on.
+   * @returns Self to be further chained.
    */
-  joins(domains: JoinObject): void {
+  joins(domains: JoinObject): RelationalStrategy {
     this.currentQuery.joins(domains);
+    return this;
   }
 
   /**
-   * Executes the current query.
+   * Limit the query to the given number of rows.
+   * @param count Maximum number of rows to be returned.
+   * @returns Self to be further chained.
    */
-  executeQuery() {
+  limit(count: number): RelationalStrategy {
+    this.currentQuery.limit(count);
+    return this;
+  }
+
+  /**
+   * Specifies that the query has at most 1 result, and the result is to be returned
+   * as a single object instead of an array.
+   */
+  getSingle(): RelationalStrategy {
+    this.currentQuery.limit(1);
+    this.isSingle = true;
+    return this;
+  }
+
+  /**
+   * Executes the current query and returns the domain objects of base.
+   */
+  async executeQuery(): Promise<Array<DomainObject> | DomainObject> {
     const base = this.currentQuery.base;
     const BaseMapper = registry.getMapper(base);
     const mapper = new BaseMapper();
-    mapper.select(this.currentQuery.toQueryString());
+
+    let domainObjects = await mapper.select(this.currentQuery.toQueryString());
+    const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
+
+    return queryResult;
   }
 }
