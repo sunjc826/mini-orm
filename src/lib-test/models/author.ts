@@ -1,5 +1,6 @@
-// extends Domain Model
-export class Author {
+import { DomainObject } from "../../domain";
+
+export class Author extends DomainObject {
   name: string;
   age: number;
 }

@@ -13,11 +13,21 @@ export class RelationalStrategy implements RepositoryStrategy {
     return this;
   }
 
+  /**
+   * Adds a where condition to the current query, and restricts the number of results to one.
+   * @param criterion Condition to be added.
+   * @returns Self to be further chained.
+   */
   find(criterion: CriterionObject): RelationalStrategy {
     return this.where(criterion).getSingle();
   }
 
-  async findById(id: number): Promise<DomainObject> {
+  /**
+   * Returns a single domain object (or none) matching the given database id.
+   * @param id Id of corresponding row in db.
+   * @returns A single domain object or null if no row is found.
+   */
+  async findById(id: number): Promise<DomainObject | null> {
     return (await this.find({
       domainObjectField: "id",
       value: id,

@@ -21,6 +21,6 @@ export interface RepositoryStrategy {
   limit(count: number): RepositoryStrategy;
   getSingle(): RepositoryStrategy;
   find(criterion: CriterionObject): RepositoryStrategy;
-  findById(id: number): Promise<DomainObject>;
+  findById(id: number): Promise<DomainObject | null>;
   exec(): Promise<Array<DomainObject> | DomainObject>;
 }
