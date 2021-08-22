@@ -1,5 +1,6 @@
 import _ from "lodash";
-import { DbClient, ResultSet } from "../connect";
+import { getClient } from "../connection";
+import { DbClient, ResultSet } from "../connection/connect";
 import { DomainObject } from "../domain";
 import {
   dbColumnNameToColumnKey,
@@ -22,15 +23,21 @@ namespace DataMapper {
 export abstract class DataMapper {
   // TODO: config
   static domainKey: string;
-  static dbClient: DbClient;
+  static dbClient: Promise<DbClient> = getClient(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
+
+  static async testConn(): Promise<boolean> {
+    const isSuccessful = await (await this.dbClient).connect();
+    await (await this.dbClient).close();
+    return isSuccessful;
+  }
 
   /**
    * Returns a result set when given a sql query.
    * @param sql Sql query string.
    */
   static async select(sql: string): Promise<Array<DomainObject>> {
-    const resultSet = await this.dbClient.query(sql);
+    const resultSet = await (await this.dbClient).query(sql);
     return this.resultSetToDomainObjects(resultSet);
   }
 

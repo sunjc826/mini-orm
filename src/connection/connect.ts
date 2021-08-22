@@ -1,4 +1,4 @@
-import { Client, ClientConfig, QueryResult, QueryResultRow } from "pg";
+import { Client, ClientConfig } from "pg";
 
 export type ResultSet<T> = Array<T>;
 
@@ -46,7 +46,3 @@ export class DbClient {
   // TODO
   async queryMultiple(queries: Array<Query> | Record<string, Query>) {}
 }
-
-// const methodMissing = (obj: any) => {
-//   new Proxy(obj, ())
-// }

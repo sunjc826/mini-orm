@@ -1,4 +1,4 @@
-import { createDomainObject, DomainObject } from "../../domain";
+import { createDomainObject } from "../../domain";
 
 export class Book extends createDomainObject({ domainKey: "book" }) {
   name: string;

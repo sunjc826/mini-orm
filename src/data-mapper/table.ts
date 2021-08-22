@@ -161,8 +161,7 @@ export abstract class Table {
         )}`
       );
     }
-
-    // join is actually slower than concat, but it's more convenient here
+    
     const sql = sqlArr.join(", ");
     return sql;
   }

@@ -2,6 +2,10 @@
   "editor.formatOnSave": true,
   "prettier.prettierPath": "./node_modules/prettier",
   "typescript.preferences.importModuleSpecifier": "relative",
+  "[javascript]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+  },
   "[typescript]": {
     "editor.tabSize": 2,
     "editor.defaultFormatter": "esbenp.prettier-vscode"
