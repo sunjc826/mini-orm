@@ -76,7 +76,7 @@ export abstract class ColumnType {
    * Returns full sql of column. e.g. for create table or alter table
    * @returns Sql string of column, including name, type, constraints.
    */
-  getStringRep() {
+  toSqlCreate() {
     return `${this.getName()} ${this.getType().toUpperCase()} ${this.getOptions()}`;
   }
 }

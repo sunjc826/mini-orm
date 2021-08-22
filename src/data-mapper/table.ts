@@ -133,6 +133,17 @@ export abstract class Table {
     return this.foreignKeys[tableColumnKey] || null;
   }
 
+  static toSqlCreate(): string {
+    const innerSqlArr = [];
+    for (const [_columnKey, column] of Object.entries(this.columns)) {
+      innerSqlArr.push(column.toSqlCreate());
+    }
+    const innerSql = innerSqlArr.join(",");
+
+    const sql = `CREATE TABLE ${this.tableName} {${innerSql}}`;
+    return sql;
+  }
+
   /**
    * Returns a sql string representing the select portion of the columns queried.
    * Defaults to all columns of the table. Does not include the SELECT keyword.
