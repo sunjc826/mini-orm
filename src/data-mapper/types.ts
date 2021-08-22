@@ -1,6 +1,7 @@
 import _ from "lodash";
+import { Constructor } from "../helpers/types";
 
-export type Constructor<T> = new (...args: any) => T;
+export const ID_COLUMN_NAME = "id" as const;
 
 type IntSize = "big" | "regular" | "small";
 
@@ -80,7 +81,7 @@ export abstract class ColumnType {
   }
 }
 
-export namespace Varchar {
+export declare namespace Varchar {
   export interface VarcharOptions extends ColumnOptions {
     limit: number;
   }
@@ -110,15 +111,15 @@ export class Text extends ColumnType {
   type = text;
 }
 
-export namespace Int {
-  export interface References {
-    tableName: string;
-    tableColumnKey: string; // actually a key
-  }
+export declare namespace Int {
   export interface IntOptions extends ColumnOptions {
     variant: IntSize;
     primaryKey: boolean;
     references: References;
+  }
+  export interface References {
+    domainKey: string;
+    tableColumnKey: string;
   }
 }
 
@@ -160,12 +161,19 @@ export class Int extends ColumnType {
   }
 }
 
+export declare namespace Serial {
+  export interface SerialOptions extends Int.IntOptions {
+    autoGenerateExlusively: boolean;
+  }
+}
+
 export class Serial extends Int {
   type = int;
   variant: IntSize = "regular";
+  // TODO: add an option for this field
   autoGenerateExclusively: boolean = true;
 
-  constructor(name: string, options: Partial<Int.IntOptions>) {
+  constructor(name: string, options: Partial<Serial.SerialOptions>) {
     super(name, options);
   }
 
@@ -197,7 +205,10 @@ export class Bool extends ColumnType {
 }
 
 export type ColumnTypes = Varchar | Text | Int | Serial | Numeric | Bool;
-export type AllOptions = Varchar.VarcharOptions | Int.IntOptions;
+export type AllOptions =
+  | Varchar.VarcharOptions
+  | Int.IntOptions
+  | Serial.SerialOptions;
 
 export const COLUMN_TYPE_MAP: Record<DataTypes, Constructor<ColumnTypes>> = {
   varchar: Varchar,

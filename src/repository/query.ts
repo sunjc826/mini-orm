@@ -1,5 +1,6 @@
 import _ from "lodash";
-import { ColumnMap, DataMapper } from "../data-mapper";
+import { DataMapper } from "../data-mapper";
+import { ColumnMap } from "../data-mapper/metadata";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
 import { registry } from "../registry";

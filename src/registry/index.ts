@@ -2,7 +2,7 @@ import { DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
 import { UnitOfWork } from "../data-mapper/unitOfWork";
 import { DomainObject } from "../domain";
-import { Constructor } from "../types";
+import { Constructor } from "../helpers/types";
 
 interface RegistryItem {
   _Table: typeof Table;
@@ -36,6 +36,27 @@ class Registry {
       _DomainObject,
       _DataMapper,
     };
+    this.unitOfWork.register(item);
+  }
+
+  registerTable<T extends typeof Table>(item: string, _Table: T) {
+    this.registry[item]._Table = _Table;
+    this.unitOfWork.register(item);
+  }
+
+  registerDomainObject<D extends DomainObject>(
+    item: string,
+    _DomainObject: Constructor<D>
+  ) {
+    this.registry[item]._DomainObject = _DomainObject;
+    this.unitOfWork.register(item);
+  }
+
+  registerDataMapper<M extends typeof DataMapper>(
+    item: string,
+    _DataMapper: M
+  ) {
+    this.registry[item]._DataMapper = _DataMapper;
     this.unitOfWork.register(item);
   }
 

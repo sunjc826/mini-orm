@@ -1,40 +1,15 @@
 import { table } from "console";
 import _ from "lodash";
 import { formatDbColumn, formatResultSetColumnName } from "../helpers";
+import { FirstParam } from "../helpers/types";
 import {
   DataTypes,
   AllOptions,
   ColumnTypes,
   COLUMN_TYPE_MAP,
   Int,
-} from "../types";
+} from "./types";
 
-namespace Table {
-  export interface AddColumnsOptions {
-    type: DataTypes;
-    options: Partial<AllOptions>;
-  }
-
-  // TODO: this interface can be used for composite keys, which aren't implemented for now
-  // i.e. for now, treat the arrays as length 1
-  /**
-   * Represents a belongs to relation. OwnTable belongs to OtherTable.
-   */
-  export interface Reference {
-    ownTableForeignKeys: Array<string>;
-    otherTableCandidateKeys: Array<string>;
-  }
-
-  /**
-   * Represents a has one/many relation. OwnTable has one/many OtherTable.
-   */
-  export interface ReferencedBy {
-    otherTableForeignKeys: Array<string>;
-    ownTableCandidateKeys: Array<string>;
-  }
-}
-
-// TODO: methods should probably be converted to static ones
 export abstract class Table {
   /**
    * The actual db table name, snakecased.
@@ -52,10 +27,10 @@ export abstract class Table {
   // TODO: supports single column references for now
   // can consider implementing composite keys in future
   // Note: We also assume that 2 distinct table can only have 1 reference, this is why
-  // the table name itself is used as a key here
+  // the table's domainKey itself is used as a key here
   /**
    * A map of the form
-   * [otherTableName] : {
+   * [otherDomainKey] : {
    *  ...other properties
    * }
    */
@@ -82,18 +57,15 @@ export abstract class Table {
   static addColumn(
     name: string,
     type: DataTypes,
-    options: Partial<AllOptions>
+    options: Partial<AllOptions> = {}
   ): void {
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
-    if (
-      (type === "int" || type === "serial") &&
-      (options as Int.IntOptions).references
-    ) {
-      const { tableName, tableColumnKey } = (options as Int.IntOptions)
+    if (type === "int" && (options as Int.IntOptions).references) {
+      const { domainKey, tableColumnKey } = (options as Int.IntOptions)
         .references;
-      this.references[tableName] = {
+      this.references[domainKey] = {
         ownTableForeignKeys: [name],
         otherTableCandidateKeys: [tableColumnKey],
       };
@@ -107,7 +79,11 @@ export abstract class Table {
    */
   static addColumns(obj: Record<string, Table.AddColumnsOptions>): void {
     for (const [name, addColumnsOptions] of Object.entries(obj)) {
-      this.addColumn(name, addColumnsOptions.type, addColumnsOptions.options);
+      this.addColumn(
+        name,
+        addColumnsOptions.type,
+        addColumnsOptions.options || {}
+      );
     }
   }
 
@@ -186,4 +162,39 @@ export abstract class Table {
   ): string {
     return formatResultSetColumnName(dbTableName, dbColName);
   }
+}
+
+declare namespace Table {
+  export interface AddColumnsOptions {
+    type: DataTypes;
+    options?: Partial<AllOptions>;
+  }
+
+  // TODO: this interface can be used for composite keys, which aren't implemented for now
+  // i.e. for now, treat the arrays as length 1
+  /**
+   * Represents a belongs to relation. OwnTable belongs to OtherTable.
+   */
+  export interface Reference {
+    ownTableForeignKeys: Array<string>;
+    otherTableCandidateKeys: Array<string>;
+  }
+
+  /**
+   * Represents a has one/many relation. OwnTable has one/many OtherTable.
+   */
+  export interface ReferencedBy {
+    otherTableForeignKeys: Array<string>;
+    ownTableCandidateKeys: Array<string>;
+  }
+}
+
+interface CreateTableOptions {
+  columns: FirstParam<typeof Table["addColumns"]>;
+}
+
+export function createTable({ columns }: CreateTableOptions) {
+  const NewTable = class extends Table {};
+  NewTable.addColumns(columns);
+  return NewTable;
 }

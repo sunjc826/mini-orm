@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
-import { Constructor } from "../types";
+import { Constructor } from "./types";
 
 // various string manipulation helpers
 
@@ -60,4 +60,8 @@ export function extractDomainKeyFromTable(tableName: string) {
 
 export function dbColumnNameToColumnKey(dbColName: string) {
   return _.camelCase(dbColName);
+}
+
+export function deepCopy(object: string) {
+  return JSON.parse(JSON.stringify(object));
 }

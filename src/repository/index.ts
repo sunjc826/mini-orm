@@ -26,6 +26,5 @@ function createRepoProxy(repo: Repository): Repository & RelationalStrategy {
   }) as any as Repository & RelationalStrategy;
 }
 
-export const repository = createRepoProxy(
-  new Repository(new RelationalStrategy())
-);
+export const Repo = createRepoProxy(new Repository(new RelationalStrategy()));
+export type Repo = typeof Repo;
