@@ -7,6 +7,10 @@ export class RelationalStrategy implements RepositoryStrategy {
   currentQuery: Query;
   isSingle: boolean;
 
+  isQueryExists(): boolean {
+    return !!this.currentQuery;
+  }
+
   newQuery(base: string): RelationalStrategy {
     this.currentQuery = new Query(base);
     this.isSingle = false;

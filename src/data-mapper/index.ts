@@ -25,12 +25,6 @@ export abstract class DataMapper {
   static dbClient: DbClient;
   static metadata: MetaData;
 
-  // constructor({ TableClass, metadata }: DataMapper.ConstructorParams) {
-  //   if (!metadata) {
-  //     this.metadata = MetaData.generateDefaultMetaData(TableClass);
-  //   }
-  // }
-
   /**
    * Returns a result set when given a sql query.
    * @param sql Sql query string.

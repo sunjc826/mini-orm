@@ -16,6 +16,7 @@ export enum Operators {
 
 export interface RepositoryStrategy {
   currentQuery: Query;
+  isQueryExists(): boolean;
   where(criterion: CriterionObject): RepositoryStrategy;
   joins(domains: JoinObject): RepositoryStrategy;
   limit(count: number): RepositoryStrategy;

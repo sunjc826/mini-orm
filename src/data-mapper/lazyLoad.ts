@@ -1,6 +1,6 @@
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
-import { Repo } from "../repository";
+import { getRepoProxy } from "../repository";
 
 export class ValueHolder<T extends DomainObject> {
   value?: T | Array<T>;
@@ -19,6 +19,7 @@ export class ValueHolder<T extends DomainObject> {
    */
   private async loadValue() {
     const idMap = registry.getIdentityMap();
+    const Repo = getRepoProxy();
     let obj = idMap.find(this.domainKey, this.id);
     if (obj === undefined) {
       obj = await Repo.strategy.findById(this.id);
