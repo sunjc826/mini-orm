@@ -5,9 +5,9 @@ import { DomainObject } from "../domain";
 import { Constructor } from "../types";
 
 interface RegistryItem {
-  Table: Constructor<Table>;
-  DomainObject: Constructor<DomainObject>;
-  DataMapper: Constructor<DataMapper>;
+  _Table: typeof Table;
+  _DomainObject: Constructor<DomainObject>;
+  _DataMapper: typeof DataMapper;
 }
 
 /**
@@ -24,34 +24,31 @@ interface RegistryItem {
  */
 class Registry {
   registry: Record<string, RegistryItem> = {};
-  unitOfWork: UnitOfWork;
-  constructor() {
-    this.unitOfWork = new UnitOfWork();
-  }
-  register(
-    item: string,
-    Table: Constructor<Table>,
-    DomainObject: Constructor<DomainObject>,
-    DataMapper: Constructor<DataMapper>
-  ) {
+  unitOfWork: UnitOfWork = new UnitOfWork();
+
+  register<
+    T extends typeof Table,
+    D extends DomainObject,
+    M extends typeof DataMapper
+  >(item: string, _Table: T, _DomainObject: Constructor<D>, _DataMapper: M) {
     this.registry[item] = {
-      Table,
-      DomainObject,
-      DataMapper,
+      _Table,
+      _DomainObject,
+      _DataMapper,
     };
     this.unitOfWork.register(item);
   }
 
   getTable(key: string) {
-    return this.registry[key]?.Table;
+    return this.registry[key]?._Table;
   }
 
   getDomainObject(key: string) {
-    return this.registry[key]?.DomainObject;
+    return this.registry[key]?._DomainObject;
   }
 
   getMapper(key: string) {
-    return this.registry[key]?.DataMapper;
+    return this.registry[key]?._DataMapper;
   }
 
   getIdentityMap() {

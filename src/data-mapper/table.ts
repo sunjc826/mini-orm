@@ -39,7 +39,7 @@ export abstract class Table {
   /**
    * The actual db table name, snakecased.
    */
-  tableName: string;
+  static tableName: string;
   /**
    * A map of the form
    * [tableColumnKey] : {
@@ -48,7 +48,7 @@ export abstract class Table {
    * }
    * Note that [tableColumnKey] can still be camelcased
    */
-  columns: Record<string, ColumnTypes> = {};
+  static columns: Record<string, ColumnTypes> = {};
   // TODO: supports single column references for now
   // can consider implementing composite keys in future
   // Note: We also assume that 2 distinct table can only have 1 reference, this is why
@@ -59,16 +59,16 @@ export abstract class Table {
    *  ...other properties
    * }
    */
-  references: Record<string, Table.Reference> = {};
-  referencedBy: Record<string, Table.ReferencedBy> = {};
+  static references: Record<string, Table.Reference> = {};
+  static referencedBy: Record<string, Table.ReferencedBy> = {};
 
-  foreignKeys: Record<string, string> = {};
+  static foreignKeys: Record<string, string> = {};
 
   // TODO: Can also implement table constraints in future
 
-  constructor(tableName: string) {
-    this.tableName = _.snakeCase(tableName);
-  }
+  // constructor(tableName: string) {
+  //   this.tableName = _.snakeCase(tableName);
+  // }
 
   // TODO
   static topoSort() {}
@@ -79,7 +79,11 @@ export abstract class Table {
    * @param type DB type.
    * @param options DB column options.
    */
-  addColumn(name: string, type: DataTypes, options: Partial<AllOptions>): void {
+  static addColumn(
+    name: string,
+    type: DataTypes,
+    options: Partial<AllOptions>
+  ): void {
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
@@ -101,7 +105,7 @@ export abstract class Table {
    * Adds multiple columns to the table.
    * @param obj A hash of with keys as db column name and values as column options.
    */
-  addColumns(obj: Record<string, Table.AddColumnsOptions>): void {
+  static addColumns(obj: Record<string, Table.AddColumnsOptions>): void {
     for (const [name, addColumnsOptions] of Object.entries(obj)) {
       this.addColumn(name, addColumnsOptions.type, addColumnsOptions.options);
     }
@@ -112,7 +116,7 @@ export abstract class Table {
    * @param tableColumnKey
    * @returns Actual DB column name.
    */
-  getDbColumnName(tableColumnKey: string): string {
+  static getDbColumnName(tableColumnKey: string): string {
     return this.columns[tableColumnKey].getName();
   }
 
@@ -121,11 +125,11 @@ export abstract class Table {
    * @param domainKey Domain key is a string key in the registry that is linked to the associated table.
    * @returns Whether this table has a belongs to relation to another table.
    */
-  belongsTo(domainKey: string): boolean {
+  static belongsTo(domainKey: string): boolean {
     return !!this.references[domainKey];
   }
 
-  getReference(domainKey: string): Table.Reference {
+  static getReference(domainKey: string): Table.Reference {
     return this.references[domainKey];
   }
 
@@ -134,11 +138,11 @@ export abstract class Table {
    * @param domainKey Domain key is a string key in the registry that is linked to the associated table.
    * @returns Whether this table has a has one or has many relation with another table.
    */
-  hasOneOrMany(domainKey: string): boolean {
+  static hasOneOrMany(domainKey: string): boolean {
     return !!this.referencedBy[domainKey];
   }
 
-  isForeignKey(tableColumnKey: string) {
+  static isForeignKey(tableColumnKey: string) {
     return tableColumnKey in this.foreignKeys;
   }
 
@@ -149,7 +153,7 @@ export abstract class Table {
    * @param tableColumnKey
    * @returns
    */
-  foreignKeyDomain(tableColumnKey: string) {
+  static foreignKeyDomain(tableColumnKey: string) {
     return this.foreignKeys[tableColumnKey] || null;
   }
 
@@ -158,7 +162,7 @@ export abstract class Table {
    * Defaults to all columns of the table. Does not include the SELECT keyword.
    * @param columnNames
    */
-  toSqlSelect(...columnNames: Array<string>): string {
+  static toSqlSelect(...columnNames: Array<string>): string {
     const sqlArr = [];
     for (const column of columnNames) {
       const dbTableName = this.tableName;
@@ -176,7 +180,10 @@ export abstract class Table {
     return sql;
   }
 
-  private getTableColumnKey(dbTableName: string, dbColName: string): string {
+  private static getTableColumnKey(
+    dbTableName: string,
+    dbColName: string
+  ): string {
     return formatResultSetColumnName(dbTableName, dbColName);
   }
 }

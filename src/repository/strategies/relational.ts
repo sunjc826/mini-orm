@@ -94,9 +94,9 @@ export class RelationalStrategy implements RepositoryStrategy {
   async exec(): Promise<Array<DomainObject> | DomainObject> {
     const base = this.currentQuery.base;
     const BaseMapper = registry.getMapper(base);
-    const mapper = new BaseMapper();
-
-    let domainObjects = await mapper.select(this.currentQuery.toQueryString());
+    let domainObjects = await BaseMapper.select(
+      this.currentQuery.toQueryString()
+    );
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
 
     return queryResult;

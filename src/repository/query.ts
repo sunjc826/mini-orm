@@ -77,11 +77,10 @@ export class Query {
       const Table = registry.getTable(key);
       const Mapper = registry.getMapper(key);
       // probably should make DataMappers static, or use single instance pattern
-      const table = new Table();
-      const mapper = new Mapper();
-      sqlSelectPartArr.push(table.toSqlSelect());
+
+      sqlSelectPartArr.push(Table.toSqlSelect());
       const whereStrings = criteriaArr.map((criterion) => {
-        return criterion.toSqlWhere(table, mapper);
+        return criterion.toSqlWhere(Table, Mapper);
       });
       sqlWherePartArr.push(...whereStrings);
     }
@@ -148,17 +147,20 @@ class Criterion {
    * is done elsewhere.
    * @returns Sql where clause
    */
-  toSqlWhere(table: Table, mapper: DataMapper): string {
+  toSqlWhere<T extends typeof Table, M extends typeof DataMapper>(
+    Table: T,
+    Mapper: M
+  ): string {
     // match the right metadata
     // for now we assume TableColumn to domain object field 1:1 map
     // in future, we will work on value objects and other more complex mappings
-    const field = mapper.metadata.findByDomain(this.domainObjectField);
+    const field = Mapper.metadata.findByDomain(this.domainObjectField);
     if (!field) {
       throw Error("no match for domain object field");
     }
     const tableKey = (field as ColumnMap).tableColumnKey;
-    const actualDbColumnName = table.getDbColumnName(tableKey);
-    return `${formatDbColumn(table.tableName, actualDbColumnName)} ${
+    const actualDbColumnName = Table.getDbColumnName(tableKey);
+    return `${formatDbColumn(Table.tableName, actualDbColumnName)} ${
       this.sqlOperator
     } ${this.value}`;
   }
@@ -209,7 +211,7 @@ class Join {
 
   toSqlJoin(): string {
     const BaseTable = registry.getTable(this.base);
-    const baseTableName = new BaseTable().tableName;
+    const baseTableName = BaseTable.tableName;
     const sqlJoinPart = `${baseTableName} ${Join.toSqlJoinHelper(
       this.base,
       this.joinDomains
@@ -240,32 +242,31 @@ class Join {
       const Table = registry.getTable(rootDomainKey);
       const otherDomainKey = Join.firstKey(joinDomains);
       const OtherTable = registry.getTable(otherDomainKey);
-      const table = new Table();
-      const otherTable = new OtherTable();
+
       const sqlArr = [];
-      if (table.belongsTo(otherDomainKey)) {
-        const reference = table.getReference(otherDomainKey);
+      if (Table.belongsTo(otherDomainKey)) {
+        const reference = Table.getReference(otherDomainKey);
         for (let i = 0; i < reference.ownTableForeignKeys.length; i++) {
           sqlArr.push(
             `${formatDbColumn(
-              table.tableName,
+              Table.tableName,
               reference.ownTableForeignKeys[i]
             )} = ${formatDbColumn(
-              otherTable.tableName,
+              OtherTable.tableName,
               reference.otherTableCandidateKeys[i]
             )}`
           );
         }
-      } else if (otherTable.belongsTo(rootDomainKey)) {
-        const reference = otherTable.getReference(rootDomainKey);
+      } else if (OtherTable.belongsTo(rootDomainKey)) {
+        const reference = OtherTable.getReference(rootDomainKey);
         const sqlArr = [];
         for (let i = 0; i < reference.ownTableForeignKeys.length; i++) {
           sqlArr.push(
             `${formatDbColumn(
-              otherTable.tableName,
+              OtherTable.tableName,
               reference.ownTableForeignKeys[i]
             )} = ${formatDbColumn(
-              table.tableName,
+              Table.tableName,
               reference.otherTableCandidateKeys[i]
             )}`
           );
@@ -273,7 +274,7 @@ class Join {
       } else {
         throw new Error("no relation found.");
       }
-      const sql = `INNER JOIN ${otherTable.tableName} ON ${sqlArr.join(
+      const sql = `INNER JOIN ${OtherTable.tableName} ON ${sqlArr.join(
         " AND "
       )}`;
       return sql;

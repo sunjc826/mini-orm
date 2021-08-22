@@ -26,23 +26,22 @@ namespace MetaDataObjectTypes {
 
 export abstract class DataMapper {
   // TODO: config
-  domainKey: string;
-  dbClient = new DbClient({});
-  metadata: MetaData;
+  static domainKey: string;
+  static dbClient: DbClient;
+  static metadata: MetaData;
 
-  constructor({ TableClass, metadata }: DataMapper.ConstructorParams) {
-    // strategy: use tableClass to generate default metadata, merge with given metadata
-    if (!metadata) {
-      this.metadata = MetaData.generateDefaultMetaData(TableClass);
-    }
-  }
+  // constructor({ TableClass, metadata }: DataMapper.ConstructorParams) {
+  //   if (!metadata) {
+  //     this.metadata = MetaData.generateDefaultMetaData(TableClass);
+  //   }
+  // }
 
   // TODO: This method looks like it should be static (in fact the whole data mapper shld be static)
   /**
    * Returns a result set when given a sql query.
    * @param sql Sql query string.
    */
-  async select(sql: string): Promise<Array<DomainObject>> {
+  static async select(sql: string): Promise<Array<DomainObject>> {
     const resultSet = await this.dbClient.query(sql);
     return this.resultSetToDomainObjects(resultSet);
   }
@@ -51,7 +50,7 @@ export abstract class DataMapper {
    * Converts db rows to domain objects.
    * @param resultSet
    */
-  private resultSetToDomainObjects(resultSet: ResultSet<any>) {
+  private static resultSetToDomainObjects(resultSet: ResultSet<any>) {
     const domainObjects = resultSet.map((row) => {
       const tableColumnMap: Record<string, any> = {};
       let requestedDomainObj: DomainObject | null = null;
@@ -76,18 +75,19 @@ export abstract class DataMapper {
         const Mapper = registry.getMapper(domainKey);
         const DomainObj = registry.getDomainObject(domainKey);
         const Table = registry.getTable(domainKey);
-        const mapper = new Mapper();
         const domainObj: Record<string, any> = {};
-        const table = new Table();
         for (const [tableColumnKey, value] of Object.entries(tableObj)) {
           // TODO: O(n^2) find here, kinda bad.
           let inMemoryValue = value;
-          if (table.isForeignKey(tableColumnKey)) {
-            const foreignDomainKey = table.foreignKeyDomain(tableColumnKey)!;
-            inMemoryValue = getVirtualDomainObject(foreignDomainKey, value as number);
+          if (Table.isForeignKey(tableColumnKey)) {
+            const foreignDomainKey = Table.foreignKeyDomain(tableColumnKey)!;
+            inMemoryValue = getVirtualDomainObject(
+              foreignDomainKey,
+              value as number
+            );
           }
 
-          const metadataField = mapper.metadata.findByTable(tableColumnKey);
+          const metadataField = Mapper.metadata.findByTable(tableColumnKey);
           switch (metadataField?.variant) {
             case MetaDataObjectTypes.columnMap: {
               domainObj[metadataField.domainFieldName] = inMemoryValue;
@@ -131,10 +131,9 @@ export class MetaData {
 
   metadataFields: Array<AllMetadataFieldTypes> = [];
 
-  static generateDefaultMetaData(TableClass: Constructor<Table>): MetaData {
+  static generateDefaultMetaData<T extends typeof Table>(Table: T): MetaData {
     const metadata = new MetaData();
-    const table = new TableClass();
-    for (const columnName of Object.keys(table)) {
+    for (const columnName of Object.keys(Table)) {
       metadata.metadataFields.push(ColumnMap.usingColumn(columnName));
     }
     metadata.metadataFields.push(
