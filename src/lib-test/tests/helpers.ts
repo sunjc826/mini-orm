@@ -1,7 +1,7 @@
 import path from "path";
 import fs, { appendFileSync, readdirSync, unlinkSync, writeFileSync } from "fs";
 import { quote } from "../../helpers";
-const logFileDir = path.resolve(__dirname, "test-logs");
+const logFileDir = path.resolve(__dirname, "../", "logs/");
 const logFilePath = path.resolve(logFileDir, "log");
 
 export function sqlIsTableExists(
@@ -30,5 +30,5 @@ export function clear() {
   let regex = /^log.*/;
   readdirSync(logFileDir)
     .filter((f) => regex.test(f))
-    .forEach((f) => unlinkSync(path + f));
+    .forEach((f) => unlinkSync(path.resolve(logFileDir, f)));
 }
