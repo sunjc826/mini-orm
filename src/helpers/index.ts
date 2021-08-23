@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
 import { Table } from "../data-mapper/table";
+import { registry } from "../registry";
 import { Constructor } from "./types";
 
 // various string manipulation helpers
@@ -31,6 +32,10 @@ export function formatDbColumn(tableName: string, dbColName: string) {
   return `${tableName}.${dbColName}`;
 }
 
+// separates table name and column name
+// this is ultimately a heuristical approach since this is a valid column name
+const SEPARATOR = "_____";
+
 /**
  * Returns a string in the form of table_name-col_name. Used for naming columns selected from db.
  * @param tableName
@@ -41,23 +46,23 @@ export function formatResultSetColumnName(
   tableName: string,
   dbColName: string
 ) {
-  return `${tableName}-${dbColName}`;
+  return `${tableName}${SEPARATOR}${dbColName}`;
 }
 
 export function splitResultSetColumnName(rowString: string) {
-  const [tableName, dbColName] = rowString.split("-");
+  const [tableName, dbColName] = rowString.split(SEPARATOR);
   return { tableName, dbColName };
 }
 
-/**
- * Returns domain key from the given db table name.
- * @param tableName Snakecased table name.
- * @returns Domain key string.
- */
 export function extractDomainKeyFromTable(tableName: string) {
-  return _.camelCase(tableName);
+  return registry.getDomainKeyFromTableName(tableName);
 }
 
+/**
+ * Returns column key from the given db column name.
+ * @param tableName Snakecased column name.
+ * @returns Column key string.
+ */
 export function dbColumnNameToColumnKey(dbColName: string) {
   return _.camelCase(dbColName);
 }

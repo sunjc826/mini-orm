@@ -25,51 +25,62 @@ interface RegistryItem {
 class Registry {
   registry: Record<string, RegistryItem> = {};
   unitOfWork: UnitOfWork = new UnitOfWork();
-
+  tableNameToDomainKey: Record<string, string> = {};
   register<
     T extends typeof Table,
     D extends DomainObject,
     M extends typeof DataMapper
-  >(item: string, _Table: T, _DomainObject: Constructor<D>, _DataMapper: M) {
-    this.registry[item] = {
+  >(
+    domainKey: string,
+    _Table: T,
+    _DomainObject: Constructor<D>,
+    _DataMapper: M
+  ) {
+    this.registry[domainKey] = {
       _Table,
       _DomainObject,
       _DataMapper,
     };
-    this.unitOfWork.register(item);
+    this.tableNameToDomainKey[_Table.tableName] = domainKey;
+    this.unitOfWork.register(domainKey);
   }
 
-  registerTable<T extends typeof Table>(item: string, _Table: T) {
-    this.registry[item]._Table = _Table;
-    this.unitOfWork.register(item);
+  registerTable<T extends typeof Table>(domainKey: string, _Table: T) {
+    this.registry[domainKey]._Table = _Table;
+    this.tableNameToDomainKey[_Table.tableName] = domainKey;
+    this.unitOfWork.register(domainKey);
   }
 
   registerDomainObject<D extends DomainObject>(
-    item: string,
+    domainKey: string,
     _DomainObject: Constructor<D>
   ) {
-    this.registry[item]._DomainObject = _DomainObject;
-    this.unitOfWork.register(item);
+    this.registry[domainKey]._DomainObject = _DomainObject;
+    this.unitOfWork.register(domainKey);
   }
 
   registerDataMapper<M extends typeof DataMapper>(
-    item: string,
+    domainKey: string,
     _DataMapper: M
   ) {
-    this.registry[item]._DataMapper = _DataMapper;
-    this.unitOfWork.register(item);
+    this.registry[domainKey]._DataMapper = _DataMapper;
+    this.unitOfWork.register(domainKey);
   }
 
-  getTable(key: string) {
-    return this.registry[key]?._Table;
+  getTable<T extends typeof Table>(domainKey: string) {
+    return this.registry[domainKey]?._Table as T;
   }
 
-  getDomainObject(key: string) {
-    return this.registry[key]?._DomainObject;
+  getDomainKeyFromTableName(dbTableName: string) {
+    return this.tableNameToDomainKey[dbTableName];
   }
 
-  getMapper(key: string) {
-    return this.registry[key]?._DataMapper;
+  getDomainObject<D extends DomainObject>(domainKey: string) {
+    return this.registry[domainKey]?._DomainObject as Constructor<D>;
+  }
+
+  getMapper<M extends typeof DataMapper>(domainKey: string) {
+    return this.registry[domainKey]?._DataMapper as M;
   }
 
   getIdentityMap() {

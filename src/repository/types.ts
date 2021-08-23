@@ -15,13 +15,14 @@ export enum Operators {
 }
 
 export interface RepositoryStrategy {
-  currentQuery: Query;
+  currentQuery: Query | null;
+  newQuery(base: string): RepositoryStrategy;
   isQueryExists(): boolean;
   where(criterion: CriterionObject): RepositoryStrategy;
   joins(domains: JoinObject): RepositoryStrategy;
   limit(count: number): RepositoryStrategy;
   getSingle(): RepositoryStrategy;
   find(criterion: CriterionObject): RepositoryStrategy;
-  findById(id: number): Promise<DomainObject | null>;
-  exec(): Promise<Array<DomainObject> | DomainObject>;
+  findById<T extends DomainObject>(id: number): Promise<T | null>;
+  exec(): Promise<Array<DomainObject> | DomainObject | null>;
 }

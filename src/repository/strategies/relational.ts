@@ -4,7 +4,7 @@ import { CriterionObject, JoinObject, Query } from "../query";
 import { RepositoryStrategy } from "../types";
 
 export class RelationalStrategy implements RepositoryStrategy {
-  currentQuery: Query;
+  currentQuery: Query | null = null;
   isSingle: boolean;
 
   isQueryExists(): boolean {
@@ -15,6 +15,10 @@ export class RelationalStrategy implements RepositoryStrategy {
     this.currentQuery = new Query(base);
     this.isSingle = false;
     return this;
+  }
+
+  resetQuery() {
+    this.currentQuery = null;
   }
 
   /**
@@ -31,11 +35,11 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param id Id of corresponding row in db.
    * @returns A single domain object or null if no row is found.
    */
-  async findById(id: number): Promise<DomainObject | null> {
+  async findById<T extends DomainObject>(id: number): Promise<T | null> {
     return (await this.find({
       domainObjectField: "id",
       value: id,
-    }).exec()) as DomainObject;
+    }).exec()) as T;
   }
 
   /**
@@ -45,7 +49,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @returns Self to be further chained.
    */
   where(criterion: CriterionObject): RelationalStrategy {
-    this.currentQuery.where(criterion);
+    this.currentQuery!.where(criterion);
     return this;
   }
 
@@ -77,7 +81,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @returns Self to be further chained.
    */
   joins(domains: JoinObject): RelationalStrategy {
-    this.currentQuery.joins(domains);
+    this.currentQuery!.joins(domains);
     return this;
   }
 
@@ -87,7 +91,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @returns Self to be further chained.
    */
   limit(count: number): RelationalStrategy {
-    this.currentQuery.limit(count);
+    this.currentQuery!.limit(count);
     return this;
   }
 
@@ -96,7 +100,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * as a single object instead of an array.
    */
   getSingle(): RelationalStrategy {
-    this.currentQuery.limit(1);
+    this.currentQuery!.limit(1);
     this.isSingle = true;
     return this;
   }
@@ -105,14 +109,14 @@ export class RelationalStrategy implements RepositoryStrategy {
    * Executes the current query and returns the domain objects of base.
    * @returns An array of domain objects or a single domain object.
    */
-  async exec(): Promise<Array<DomainObject> | DomainObject> {
-    const base = this.currentQuery.base;
+  async exec<T extends DomainObject>(): Promise<Array<T> | T | null> {
+    const base = this.currentQuery!.base;
     const BaseMapper = registry.getMapper(base);
-    let domainObjects = await BaseMapper.select(
-      this.currentQuery.toQueryString()
+    let domainObjects = await BaseMapper.select<T>(
+      this.currentQuery!.toQueryString()
     );
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
 
-    return queryResult;
+    return queryResult || null;
   }
 }

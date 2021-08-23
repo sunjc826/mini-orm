@@ -1,5 +1,5 @@
 import path from "path";
-import fs, { appendFileSync, readdirSync, unlinkSync, writeFileSync } from "fs";
+import { appendFileSync, readdirSync, unlinkSync } from "fs";
 import { quote } from "../../helpers";
 const logFileDir = path.resolve(__dirname, "../", "logs/");
 const logFilePath = path.resolve(logFileDir, "log");

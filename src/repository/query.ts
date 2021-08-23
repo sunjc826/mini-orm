@@ -3,6 +3,7 @@ import { DataMapper } from "../data-mapper";
 import { ColumnMap } from "../data-mapper/metadata";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
+import { write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { EMPTY, Operators } from "./types";
 

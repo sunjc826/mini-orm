@@ -1,11 +1,12 @@
 import { DataMapper } from "../../data-mapper";
-import { AuthorTable } from "../tables/author";
+import { AuthorTable, AuthorTest } from "../tables/author";
 import { clear, sqlIsTableExists, write } from "./helpers";
-import { BookTable } from "../tables/book";
+import { BookTable, BookTest } from "../tables/book";
 
 // register stuff to registry
 import "..";
 import { DbPool } from "../../connection/connect";
+import { Author } from "../models/author";
 
 // test create table
 
@@ -24,6 +25,10 @@ afterAll(async () => {
   await pool.end();
 });
 
+afterEach(async () => {
+  await DataMapper.truncateTables();
+});
+
 interface CanCreateTableResult {
   table_exists: string;
 }
@@ -34,4 +39,15 @@ test("can create table", async () => {
   expect(result[0].table_exists).toBeTruthy();
   result = await pool.query(sqlIsTableExists(BookTable.tableName));
   expect(result[0].table_exists).toBeTruthy();
+});
+
+test("can select single table", async () => {
+  // insert some data with raw sql
+  await pool.query(AuthorTest.insertSql);
+  const nullAuthor = await Author.findById(0);
+  expect(nullAuthor).toBeNull();
+  const author = await Author.findById<Author>(1);
+  expect(author).toBeDefined();
+  expect(author).not.toBeNull();
+  expect(author!.name).toEqual("Sam");
 });

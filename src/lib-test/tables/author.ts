@@ -26,3 +26,12 @@ export const AuthorTable = createTable({
     },
   },
 });
+
+export namespace AuthorTest {
+  export var insertSql = `INSERT INTO authors (name, age) VALUES
+    ('Sam', 15),
+    ('Walton Simons', 21),
+    ('Lo Wang', 12),
+    ('Nukem', 20),
+    ('Bitterman', 35);`;
+}

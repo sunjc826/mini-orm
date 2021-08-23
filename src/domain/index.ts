@@ -1,16 +1,25 @@
 import { AnyFunction } from "../helpers/types";
-import { getRepoProxy } from "../repository";
+import { getRepoProxy, Repo } from "../repository";
 
 export abstract class DomainObject {
   static domainKey: string;
   id: number;
+
+  constructor(obj: Record<string, any>) {
+    for (const [key, value] of Object.entries(obj)) {
+      // TODO: Account for foreign key mapping
+      (this as any)[key] = value;
+    }
+  }
 }
 
 interface CreateDomainObjectOptions {
   domainKey: string;
 }
 
-export function createDomainObject({ domainKey }: CreateDomainObjectOptions) {
+export function createDomainObject({
+  domainKey,
+}: CreateDomainObjectOptions): typeof DomainObject & Repo {
   const NewDomainObject = class extends DomainObject {};
   NewDomainObject.domainKey = domainKey;
   return new Proxy(NewDomainObject, {
@@ -24,11 +33,14 @@ export function createDomainObject({ domainKey }: CreateDomainObjectOptions) {
       }
 
       // otherwise, delegate to repo
-      const Repo = getRepoProxy();
-      const value = Reflect.get(Repo, prop);
+      const RepoProxy = getRepoProxy();
+      if (!RepoProxy.isQueryExists()) {
+        RepoProxy.newQuery(target.domainKey);
+      }
+      const value = Reflect.get(RepoProxy, prop);
       return typeof value === "function"
-        ? (value as AnyFunction).bind(Repo)
+        ? (value as AnyFunction).bind(RepoProxy)
         : value;
     },
-  });
+  }) as any as typeof DomainObject & Repo;
 }

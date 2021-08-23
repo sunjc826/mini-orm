@@ -145,13 +145,19 @@ export abstract class Table {
     return sql;
   }
 
+  static toSqlTruncate(): string {
+    return `TRUNCATE TABLE ${this.tableName} RESTART IDENTITY CASCADE;`;
+  }
+
   /**
    * Returns a sql string representing the select portion of the columns queried.
    * Defaults to all columns of the table. Does not include the SELECT keyword.
    * @param columnNames
    */
-  static toSqlSelect(...columnNames: Array<string>): string {
+  static toSqlSelect(columnNames?: Array<string>): string {
     const sqlArr = [];
+    columnNames ||= Object.keys(this.columns);
+
     for (const column of columnNames) {
       const dbTableName = this.tableName;
       const dbColName = this.getDbColumnName(column);
@@ -162,8 +168,8 @@ export abstract class Table {
         )}`
       );
     }
-
     const sql = sqlArr.join(", ");
+    write({ tosqlselect: sql });
     return sql;
   }
 

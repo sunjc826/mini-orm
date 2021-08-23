@@ -1,4 +1,5 @@
 import { Client, ClientConfig, Pool, PoolClient } from "pg";
+import { write } from "../lib-test/tests/helpers";
 
 export type ResultSet<T> = Array<T>;
 
@@ -34,6 +35,7 @@ export class DbPool {
   }
 
   async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
+    // write({ sql: queryText });
     console.log({ sql: queryText, values });
     const result = await this.pool.query(queryText, values);
     return result.rows;

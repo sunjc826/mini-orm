@@ -29,11 +29,20 @@ export abstract class DataMapper {
     return (await this.dbPool).query(sql);
   }
 
+  static async truncateTables() {
+    let sql = "";
+    for (const { _Table } of Object.values(registry.registry)) {
+      sql += _Table.toSqlTruncate();
+    }
+    write(sql, "sql");
+    return (await this.dbPool).query(sql);
+  }
+
   /**
    * Returns a result set when given a sql query.
    * @param sql Sql query string.
    */
-  static async select(sql: string): Promise<Array<DomainObject>> {
+  static async select<T extends DomainObject>(sql: string): Promise<Array<T>> {
     const resultSet = await (await this.dbPool).query(sql);
     return this.resultSetToDomainObjects(resultSet);
   }
@@ -42,10 +51,13 @@ export abstract class DataMapper {
    * Converts db rows to domain objects.
    * @param resultSet
    */
-  private static resultSetToDomainObjects(resultSet: ResultSet<any>) {
+  private static resultSetToDomainObjects<T extends DomainObject>(
+    resultSet: ResultSet<any>
+  ) {
+    write(resultSet);
     const domainObjects = resultSet.map((row) => {
       const tableColumnMap: Record<string, any> = {};
-      let requestedDomainObj: DomainObject | null = null;
+      let requestedDomainObj: T | null = null;
       for (const [column, value] of Object.entries(row)) {
         /**
          * A map of the form
@@ -61,11 +73,12 @@ export abstract class DataMapper {
           dbColumnNameToColumnKey(dbColName)
         ] = value;
       }
+      // write(tableColumnMap);
 
       // create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
-        const DomainObj = registry.getDomainObject(domainKey);
+        const DomainObj = registry.getDomainObject<T>(domainKey);
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
         for (const [tableColumnKey, value] of Object.entries(tableObj)) {
@@ -90,8 +103,11 @@ export abstract class DataMapper {
             }
           }
         }
-
+        // write(domainObj);
         const actualDomainObj = new DomainObj(domainObj);
+        // write(actualDomainObj);
+        // write(domainKey);
+        // write(this.domainKey);
         registry.getIdentityMap().insert(domainKey, actualDomainObj);
         if (domainKey === this.domainKey) {
           requestedDomainObj = actualDomainObj;
@@ -103,9 +119,9 @@ export abstract class DataMapper {
         // Note: This may not be the case if right joins are used, so this may need to change in future.
         throw new Error("unexpected missing data from table row");
       }
-
       return requestedDomainObj;
     });
+    write(domainObjects);
     return domainObjects;
   }
 }
@@ -138,7 +154,7 @@ export namespace DataMapper {
 }
 
 interface CreateMapperOptions<T extends typeof Table> {
-  domainKey?: string;
+  domainKey: string;
   Table?: T;
 }
 
@@ -151,7 +167,9 @@ export function createMapper<T extends typeof Table>({
   }
   // Table takes priority
   const TableClass = Table || registry.getTable(domainKey!);
-  const Mapper = class extends DataMapper {};
+  const Mapper = class extends DataMapper {
+    static domainKey = domainKey;
+  };
   // TODO: we generate some default metadata first
   Mapper.metadata = MetaData.generateDefaultMetaData(TableClass);
   return Mapper;

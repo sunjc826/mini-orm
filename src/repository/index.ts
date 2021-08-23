@@ -14,10 +14,12 @@ class Repository {
   }
 }
 
-function createRepoProxy(repo: Repository): Repository & RepositoryStrategy {
+export type Repo = Repository & RepositoryStrategy;
+function createRepoProxy(repo: Repository): Repo {
   return new Proxy(repo, {
     get(target, prop, _receiver) {
       let result;
+      // strategy takes priority
       if (prop in target.strategy) {
         result = Reflect.get(target.strategy, prop);
         return typeof result === "function"
@@ -38,7 +40,7 @@ function createRepoProxy(repo: Repository): Repository & RepositoryStrategy {
  */
 export function getRepoProxy(
   Strategy: Strategies[keyof Strategies] = Strategies.RELATIONAL
-) {
+): Repo {
   return createRepoProxy(new Repository(new Strategy()));
 }
 
