@@ -1,6 +1,6 @@
 import _ from "lodash";
-import { getClient } from "../connection";
-import { DbClient, ResultSet } from "../connection/connect";
+import { getPool } from "../connection";
+import { DbPool, ResultSet } from "../connection/connect";
 import { DomainObject } from "../domain";
 import {
   dbColumnNameToColumnKey,
@@ -8,28 +8,25 @@ import {
   splitResultSetColumnName,
 } from "../helpers";
 import { Constructor } from "../helpers/types";
+import { write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { getVirtualDomainObject } from "./lazyLoad";
 import { MetaDataObject, MetaData, MetaDataObjectTypes } from "./metadata";
 import { Table } from "./table";
 
-namespace DataMapper {
-  export interface ConstructorParams {
-    TableClass: Constructor<Table>;
-    metadata?: Array<MetaDataObject>;
-  }
-}
-
 export abstract class DataMapper {
   // TODO: config
   static domainKey: string;
-  static dbClient: Promise<DbClient> = getClient(); // TODO: is it possible to not have the promise here?
+  static dbPool: Promise<DbPool> = getPool(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
 
-  static async testConn(): Promise<boolean> {
-    const isSuccessful = await (await this.dbClient).connect();
-    await (await this.dbClient).close();
-    return isSuccessful;
+  static async createTables() {
+    let sql = "";
+    for (const { _Table } of Object.values(registry.registry)) {
+      sql += _Table.toSqlCreate();
+    }
+    write(sql, "sql");
+    return (await this.dbPool).query(sql);
   }
 
   /**
@@ -37,7 +34,7 @@ export abstract class DataMapper {
    * @param sql Sql query string.
    */
   static async select(sql: string): Promise<Array<DomainObject>> {
-    const resultSet = await (await this.dbClient).query(sql);
+    const resultSet = await (await this.dbPool).query(sql);
     return this.resultSetToDomainObjects(resultSet);
   }
 
@@ -111,6 +108,33 @@ export abstract class DataMapper {
     });
     return domainObjects;
   }
+}
+
+export namespace DataMapper {
+  export interface ConstructorParams {
+    TableClass: Constructor<Table>;
+    metadata?: Array<MetaDataObject>;
+  }
+
+  export var Test = {
+    async testConn(): Promise<boolean> {
+      const client = await (await DataMapper.dbPool).getClient();
+      if (!client) {
+        return false;
+      }
+      client.release();
+      return true;
+    },
+
+    // from https://stackoverflow.com/questions/3327312/how-can-i-drop-all-the-tables-in-a-postgresql-database
+    async dropAll() {
+      const sql = `DROP SCHEMA public CASCADE;
+        CREATE SCHEMA public;
+        GRANT ALL ON SCHEMA public TO postgres;
+        GRANT ALL ON SCHEMA public TO public;`;
+      return (await DataMapper.dbPool).query(sql);
+    },
+  };
 }
 
 interface CreateMapperOptions<T extends typeof Table> {

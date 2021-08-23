@@ -1,7 +1,7 @@
-import { table } from "console";
 import _ from "lodash";
 import { formatDbColumn, formatResultSetColumnName } from "../helpers";
 import { FirstParam } from "../helpers/types";
+import { write } from "../lib-test/tests/helpers";
 import {
   DataTypes,
   AllOptions,
@@ -41,10 +41,6 @@ export abstract class Table {
 
   // TODO: Can also implement table constraints in future
 
-  // constructor(tableName: string) {
-  //   this.tableName = _.snakeCase(tableName);
-  // }
-
   // TODO
   static topoSort() {}
 
@@ -59,6 +55,10 @@ export abstract class Table {
     type: DataTypes,
     options: Partial<AllOptions> = {}
   ): void {
+    write({ tableClassName: this.name });
+    write(Object.entries(this));
+    write(Object.entries(Object.getPrototypeOf(this)));
+    write({ column: name });
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
@@ -140,7 +140,8 @@ export abstract class Table {
     }
     const innerSql = innerSqlArr.join(",");
 
-    const sql = `CREATE TABLE ${this.tableName} {${innerSql}}`;
+    const sql = `CREATE TABLE ${this.tableName} (${innerSql});`;
+    // write(sql, "sql");
     return sql;
   }
 
@@ -161,7 +162,7 @@ export abstract class Table {
         )}`
       );
     }
-    
+
     const sql = sqlArr.join(", ");
     return sql;
   }
@@ -200,11 +201,61 @@ declare namespace Table {
 }
 
 interface CreateTableOptions {
+  tableName: string;
   columns: FirstParam<typeof Table["addColumns"]>;
 }
 
-export function createTable({ columns }: CreateTableOptions) {
-  const NewTable = class extends Table {};
+export function createTable({
+  tableName: dbTableName,
+  columns,
+}: CreateTableOptions) {
+  const NewTable = class extends Table {
+    /**
+     * The actual db table name, snakecased.
+     */
+    static tableName: string = _.snakeCase(dbTableName);
+    /**
+     * A map of the form
+     * [tableColumnKey] : {
+     *  name (which is the actual snakecased db column name)
+     *  ...other properties
+     * }
+     * Note that [tableColumnKey] can still be camelcased
+     */
+    static columns: Record<string, ColumnTypes> = {};
+    // TODO: supports single column references for now
+    // can consider implementing composite keys in future
+    // Note: We also assume that 2 distinct table can only have 1 reference, this is why
+    // the table's domainKey itself is used as a key here
+    /**
+     * A map of the form
+     * [otherDomainKey] : {
+     *  ...other properties
+     * }
+     */
+    static references: Record<string, Table.Reference> = {};
+    static referencedBy: Record<string, Table.ReferencedBy> = {};
+
+    static foreignKeys: Record<string, string> = {};
+  };
+  // const NewTableProxy = new Proxy(NewTable, {
+  //   get(target, prop, _receiver) {
+  //     if (prop in Object.getOwnPropertyNames(target)) {
+  //       write("already have it");
+  //       return Reflect.get(target, prop);
+  //     }
+  //     const value = Reflect.get(target, prop);
+  //     if (typeof value === "function") {
+  //       write("its an inherited function");
+  //       return value.bind(target);
+  //     }
+  //     // typeof value is not a function
+  //     // we also assume that the target value is an object (for now)
+  //     Reflect.set(target, prop, {});
+  //     write("setting and getting prop");
+  //     return Reflect.get(target, prop);
+  //   },
+  // });
   NewTable.addColumns(columns);
   return NewTable;
 }

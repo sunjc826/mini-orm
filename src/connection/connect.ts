@@ -1,4 +1,4 @@
-import { Client, ClientConfig } from "pg";
+import { Client, ClientConfig, Pool, PoolClient } from "pg";
 
 export type ResultSet<T> = Array<T>;
 
@@ -7,42 +7,35 @@ interface Query {
   values: any[];
 }
 
-export class DbClient {
+export class DbPool {
   config: ClientConfig;
-  client: Client;
+  pool: Pool;
 
   constructor(clientConfig: ClientConfig) {
     this.config = clientConfig;
-    this.client = new Client(clientConfig);
+    this.pool = new Pool(clientConfig);
   }
 
-  async connect(): Promise<boolean> {
+  async getClient(): Promise<PoolClient | null> {
     try {
-      await this.client.connect();
+      const client = await this.pool.connect();
       console.log("connection success");
+      return client;
     } catch (err) {
       console.log("connection error", err);
-      return false;
+      return null;
     }
-    return true;
   }
 
-  async close() {
-    if (this.client) {
-      this.client.end();
+  async end() {
+    if (this.pool) {
+      this.pool.end();
     }
   }
 
   async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
-    const success = await this.connect();
-    if (!success) {
-      return [];
-    }
-    const result = await this.client.query(queryText, values);
-    await this.close();
+    console.log({ sql: queryText, values });
+    const result = await this.pool.query(queryText, values);
     return result.rows;
   }
-
-  // TODO
-  async queryMultiple(queries: Array<Query> | Record<string, Query>) {}
 }

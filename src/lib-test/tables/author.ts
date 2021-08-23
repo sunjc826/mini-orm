@@ -7,6 +7,7 @@ import { createTable, Table } from "../../data-mapper/table";
 // }
 
 export const AuthorTable = createTable({
+  tableName: "authors",
   columns: {
     id: {
       type: "serial",

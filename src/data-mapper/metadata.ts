@@ -20,7 +20,7 @@ export class MetaData {
 
   static generateDefaultMetaData<T extends typeof Table>(Table: T): MetaData {
     const metadata = new MetaData();
-    for (const columnName of Object.keys(Table)) {
+    for (const columnName of Object.keys(Table.columns)) {
       metadata.metadataFields.push(ColumnMap.usingColumn(columnName));
     }
     metadata.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));

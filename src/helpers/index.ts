@@ -65,3 +65,11 @@ export function dbColumnNameToColumnKey(dbColName: string) {
 export function deepCopy(object: string) {
   return JSON.parse(JSON.stringify(object));
 }
+
+export function quote(str: string, comment: string = "") {
+  return `$${comment}$${str}$${comment}$`;
+}
+
+export function brackets(str: string) {
+  return `(${str})`;
+}

@@ -69,7 +69,7 @@ export abstract class ColumnType {
    * @returns Sql string of generic column constraints.
    */
   getOptions(): string {
-    return `${this.nullable ? "" : "nullable"} ${this.unique ? "unique" : ""}`;
+    return `${this.nullable ? "" : "NOT NULL"} ${this.unique ? "UNIQUE" : ""}`;
   }
 
   /**
@@ -149,13 +149,13 @@ export class Int extends ColumnType {
   getType(): string {
     switch (this.variant) {
       case "big": {
-        return "bigint";
+        return "BIGINT";
       }
       case "regular": {
-        return "int";
+        return "INT";
       }
       case "small": {
-        return "smallint";
+        return "SMALLINT";
       }
     }
   }

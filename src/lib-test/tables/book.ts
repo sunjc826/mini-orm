@@ -1,4 +1,4 @@
-import { createTable, Table } from "../../data-mapper/table";
+import { createTable } from "../../data-mapper/table";
 
 // export class BookTable extends Table {
 //   name: string;
@@ -7,6 +7,7 @@ import { createTable, Table } from "../../data-mapper/table";
 // }
 
 export const BookTable = createTable({
+  tableName: "books",
   columns: {
     id: {
       type: "serial",
