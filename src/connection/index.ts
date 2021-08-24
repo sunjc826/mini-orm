@@ -11,6 +11,5 @@ const pathToConfig = resolve(PROJECT_ROOT, CONFIG_FILENAME);
 export async function getPool() {
   const configFile = await readFile(pathToConfig, "utf-8");
   const dbConfig: ClientConfig = JSON.parse(configFile);
-  console.log("config: ", dbConfig);
   return new DbPool(dbConfig);
 }

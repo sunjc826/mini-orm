@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
-import { ColumnMap } from "../data-mapper/metadata";
+import { ColumnMap, MetaDataObjectType } from "../data-mapper/metadata";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
 import { write } from "../lib-test/tests/helpers";
@@ -162,7 +162,20 @@ class Criterion {
         `no match for domain object field: ${this.domainObjectField}`
       );
     }
-    const tableKey = (field as ColumnMap).tableColumnKey;
+    let tableKey;
+    switch (field.variant) {
+      case MetaDataObjectType.COLUMN_MAP: {
+        tableKey = field.tableColumnKey;
+        break;
+      }
+      case MetaDataObjectType.FOREIGN_KEY_MAP: {
+        tableKey = field.foreignKey;
+        break;
+      }
+      default: {
+        throw new Error("unexpected metadata type");
+      }
+    }
     const actualDbColumnName = Table.getDbColumnName(tableKey);
     return `${formatDbColumn(Table.tableName, actualDbColumnName)} ${
       this.sqlOperator

@@ -43,6 +43,3 @@ export function getRepoProxy(
 ): Repo {
   return createRepoProxy(new Repository(new Strategy()));
 }
-
-// export const Repo = createRepoProxy(new Repository(new RelationalStrategy()));
-// export type Repo = typeof Repo;

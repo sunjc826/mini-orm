@@ -6,7 +6,7 @@
   "scripts": {
     "start": "ts-node ./src/index.ts",
     "dev": "ts-node-transpile-only ./src/index.ts",
-    "test": "jest"
+    "test": "jest --verbose=true"
   },
   "repository": {
     "type": "git",

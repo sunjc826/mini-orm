@@ -4,4 +4,7 @@ import { BookTable } from "../tables/book";
 export class BookMapper extends createMapper({
   domainKey: "book",
   Table: BookTable,
+  belongsTo: {
+    author: {},
+  },
 }) {}

@@ -35,9 +35,8 @@ export class DbPool {
   }
 
   async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
-    // write({ sql: queryText });
     write(queryText, "sql");
-    console.log({ sql: queryText, values });
+    // console.log({ sql: queryText, values });
     const result = await this.pool.query(queryText, values);
     return result.rows;
   }

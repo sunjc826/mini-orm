@@ -22,6 +22,10 @@ export abstract class DataMapper {
   static dbPool: Promise<DbPool> = getPool(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
 
+  /**
+   * Creates all registered tables in db.
+   * @returns Promise of db query.
+   */
   static async createTables() {
     let sql = "";
     for (const { _Table } of Object.values(registry.registry)) {
@@ -31,6 +35,10 @@ export abstract class DataMapper {
     return (await this.dbPool).query(sql);
   }
 
+  /**
+   * Truncates all registered tables in db.
+   * @returns Promise of db query.
+   */
   static async truncateTables() {
     let sql = "";
     for (const { _Table } of Object.values(registry.registry)) {
@@ -176,7 +184,6 @@ export abstract class DataMapper {
         // }
         //// NEED TO CHANGE THIS IMPLEMENTATION
         const actualDomainObj = new DomainObj(domainObj);
-
         registry.getIdentityMap().insert(domainKey, actualDomainObj);
         if (domainKey === this.domainKey) {
           requestedDomainObj = actualDomainObj;

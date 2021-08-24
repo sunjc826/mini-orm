@@ -246,10 +246,11 @@ export class ForeignKeyMap extends AllMetadataField {
   }
 
   matchByDomain(domainObjectField: string): boolean {
-    return false;
+    // TODO
+    return domainObjectField === this.foreignKey;
   }
   matchByTable(tableColumnKey: string): boolean {
-    return false;
+    return tableColumnKey === this.foreignKey;
   }
 }
 
