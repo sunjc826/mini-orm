@@ -21,7 +21,7 @@ export const BookTable = createTable({
     genre: {
       type: "varchar",
       options: {
-        limit: 10,
+        limit: 20,
       },
     },
     authorId: {
@@ -38,7 +38,7 @@ export const BookTable = createTable({
 
 export namespace BookTest {
   export var insertSql = `INSERT INTO books (name, genre, author_id) VALUES
-    ('Memes', 2),  
-    ('Why I'm so great', 4),
-    ('Masters of Doom', 5);`;
+    ('Memes', 'Memes', 2),  
+    ('Why I''m so great', 'Autobiography', 4),
+    ('Masters of Doom', 'History', 5);`;
 }

@@ -158,7 +158,9 @@ class Criterion {
     // in future, we will work on value objects and other more complex mappings
     const field = Mapper.metadata.findByDomain(this.domainObjectField);
     if (!field) {
-      throw Error("no match for domain object field");
+      throw Error(
+        `no match for domain object field: ${this.domainObjectField}`
+      );
     }
     const tableKey = (field as ColumnMap).tableColumnKey;
     const actualDbColumnName = Table.getDbColumnName(tableKey);

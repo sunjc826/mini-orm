@@ -1,24 +1,12 @@
-import {
-  addIdToName,
-  primitivePluralize,
-  stripHasManyRelation,
-} from "../helpers";
+import { addIdToName, stripHasManyRelation } from "../helpers";
 import { registry } from "../registry";
 import { Table } from "./table";
-import { ID_COLUMN_NAME, Int } from "./types";
+import { ID_COLUMN_NAME } from "./types";
 
 export enum MetaDataObjectType {
   COLUMN_MAP,
   FOREIGN_KEY_MAP,
 }
-
-export type MetaDataObject =
-  | string
-  | {
-      variant: MetaDataObjectType;
-      tableColumnKey: string;
-      domainFieldName: string;
-    };
 
 export class MetaData {
   domainKey: string;
@@ -44,32 +32,50 @@ export class MetaData {
     return metadata;
   }
 
-  belongsTo(relationName: string) {
+  belongsTo({
+    relationName,
+    foreignKey,
+    otherDomainKey,
+  }: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.BELONGS_TO,
         relationName,
+        foreignKey,
         domainKey: this.domainKey,
+        otherDomainKey,
       })
     );
   }
 
-  hasOne(relationName: string) {
+  hasOne({
+    relationName,
+    foreignKey,
+    otherDomainKey,
+  }: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.HAS_ONE,
         relationName,
+        foreignKey,
         domainKey: this.domainKey,
+        otherDomainKey,
       })
     );
   }
 
-  hasMany(relationName: string) {
+  hasMany({
+    relationName,
+    foreignKey,
+    otherDomainKey,
+  }: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.HAS_MANY,
         relationName,
+        foreignKey,
         domainKey: this.domainKey,
+        otherDomainKey,
       })
     );
   }
@@ -90,6 +96,17 @@ export class MetaData {
   }
 }
 
+export declare namespace MetaData {
+  export interface RelationOptionsWithoutName {
+    foreignKey?: string; // tableColumnKey acting as the foreignKey
+    otherDomainKey?: string;
+  }
+
+  export interface RelationOptions extends RelationOptionsWithoutName {
+    relationName: string;
+  }
+}
+
 export abstract class AllMetadataField {
   abstract variant: MetaDataObjectType;
   /**
@@ -104,7 +121,7 @@ export abstract class AllMetadataField {
  * Encapsulates the most basic column mapping, 1 db table column : 1 domain object field
  */
 export class ColumnMap extends AllMetadataField {
-  variant = MetaDataObjectType.COLUMN_MAP;
+  variant = MetaDataObjectType.COLUMN_MAP as const;
   tableColumnKey: string;
   domainFieldName: string;
 
@@ -150,7 +167,7 @@ export enum RelationType {
 }
 
 export class ForeignKeyMap extends AllMetadataField {
-  variant: MetaDataObjectType.FOREIGN_KEY_MAP;
+  variant = MetaDataObjectType.FOREIGN_KEY_MAP as const;
   foreignKey: string; // tableColumnKey acting as the foreignKey
   relationName: string;
   relationType: RelationType;
@@ -193,7 +210,7 @@ export class ForeignKeyMap extends AllMetadataField {
     }
   }
 
-  guessOtherDomainKey(): string {
+  private guessOtherDomainKey(): string {
     switch (this.relationType) {
       case RelationType.BELONGS_TO:
       case RelationType.HAS_ONE: {
@@ -208,7 +225,7 @@ export class ForeignKeyMap extends AllMetadataField {
     }
   }
 
-  guessForeignKey(): string {
+  private guessForeignKey(): string {
     let foreignKey: string;
     switch (this.relationType) {
       case RelationType.BELONGS_TO: {
@@ -229,20 +246,17 @@ export class ForeignKeyMap extends AllMetadataField {
   }
 
   matchByDomain(domainObjectField: string): boolean {
-    throw new Error("Method not implemented.");
+    return false;
   }
   matchByTable(tableColumnKey: string): boolean {
-    throw new Error("Method not implemented.");
+    return false;
   }
 }
 
-declare namespace ForeignKeyMap {
-  export interface ConstructorOptions {
-    foreignKey?: string; // tableColumnKey acting as the foreignKey
-    relationName: string;
+export declare namespace ForeignKeyMap {
+  export interface ConstructorOptions extends MetaData.RelationOptions {
     relationType: RelationType;
     domainKey: string; // own domainKey
-    otherDomainKey?: string;
   }
 }
 

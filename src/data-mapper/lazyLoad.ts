@@ -1,16 +1,26 @@
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
-import { getRepoProxy } from "../repository";
+import { getRepoProxy, Strategies } from "../repository";
+import { Query } from "../repository/query";
 
 export class ValueHolder<T extends DomainObject> {
-  value?: T | Array<T>;
+  value: T | Array<T> | null;
   isLoaded: boolean = false;
   domainKey: string;
-  id: number;
+  id?: number;
+  loader?: Query;
+  isSingle: boolean;
 
-  constructor(domainKey: string, id: number) {
+  constructor({
+    domainKey,
+    knownId,
+    loader,
+    isSingle,
+  }: ValueHolder.ConstructorOptions) {
     this.domainKey = domainKey;
-    this.id = id;
+    this.id = knownId;
+    this.loader = loader;
+    this.isSingle = isSingle;
   }
 
   /**
@@ -20,11 +30,24 @@ export class ValueHolder<T extends DomainObject> {
   private async loadValue() {
     const idMap = registry.getIdentityMap();
     const Repo = getRepoProxy();
-    let obj = idMap.find(this.domainKey, this.id);
-    if (obj === undefined) {
-      obj = await Repo.strategy.findById(this.id);
+    if (this.id) {
+      let obj = idMap.find(this.domainKey, this.id);
+      if (obj === undefined) {
+        obj = await Repo.strategy.findById(this.id);
+      }
+      this.value = obj;
+    } else if (this.loader) {
+      // use loader
+      Repo.setQuery(this.loader);
+      if (this.isSingle) {
+        Repo.getSingle();
+      }
+      this.value = await Repo.exec();
+    } else {
+      throw new Error(
+        "at least one of knownId, loader required to load an object"
+      );
     }
-    this.value = obj;
     this.isLoaded = true;
   }
 
@@ -33,12 +56,21 @@ export class ValueHolder<T extends DomainObject> {
    * @param prop
    * @returns
    */
-  getProp(prop: string) {
+  async getProp(prop: string) {
     if (!this.isLoaded) {
-      this.loadValue();
+      await this.loadValue();
     }
 
     return (this.value! as any)[prop];
+  }
+}
+
+export declare namespace ValueHolder {
+  export interface ConstructorOptions {
+    domainKey: string;
+    knownId?: number; // usually used by belongsTo associations, where it is easy to know the associated id
+    loader?: Query; // used by hasOne associations
+    isSingle: boolean; // whether the value holder holds an object or an array
   }
 }
 
@@ -70,9 +102,9 @@ export function createVirtualProxy<T extends DomainObject>(
   return new Proxy(valueHolder, handler) as any as T;
 }
 
+type Options = ValueHolder.ConstructorOptions;
 export function getVirtualDomainObject<T extends DomainObject>(
-  domainKey: string,
-  id: number
+  options: Options
 ) {
-  return createVirtualProxy(new ValueHolder<T>(domainKey, id));
+  return createVirtualProxy(new ValueHolder<T>(options));
 }

@@ -59,8 +59,8 @@ test("can use foreign key mapping", async () => {
   ]);
   const dukeNukem = await Author.findById<Author>(4);
   const books = dukeNukem?.books!;
-  expect(books).toBeDefined;
+  expect(books).toBeDefined();
   expect(books.length).toEqual(1);
-  const whyImSoGreatBook = books[0];
+  // const whyImSoGreatBook = books[0];
   // More tests
 });

@@ -17,6 +17,14 @@ export class RelationalStrategy implements RepositoryStrategy {
     return this;
   }
 
+  getQuery() {
+    return this.currentQuery;
+  }
+
+  setQuery(query: Query) {
+    this.currentQuery = query;
+  }
+
   resetQuery() {
     this.currentQuery = null;
   }

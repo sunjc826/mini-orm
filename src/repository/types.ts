@@ -17,6 +17,9 @@ export enum Operators {
 export interface RepositoryStrategy {
   currentQuery: Query | null;
   newQuery(base: string): RepositoryStrategy;
+  getQuery(): Query | null;
+  setQuery(query: Query): void;
+  resetQuery(): void;
   isQueryExists(): boolean;
   where(criterion: CriterionObject): RepositoryStrategy;
   joins(domains: JoinObject): RepositoryStrategy;
@@ -24,5 +27,5 @@ export interface RepositoryStrategy {
   getSingle(): RepositoryStrategy;
   find(criterion: CriterionObject): RepositoryStrategy;
   findById<T extends DomainObject>(id: number): Promise<T | null>;
-  exec(): Promise<Array<DomainObject> | DomainObject | null>;
+  exec<T extends DomainObject>(): Promise<Array<T> | T | null>;
 }

@@ -10,8 +10,10 @@ import {
 import { Constructor } from "../helpers/types";
 import { write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
+import { Query } from "../repository/query";
+import { Operators } from "../repository/types";
 import { getVirtualDomainObject } from "./lazyLoad";
-import { MetaDataObject, MetaData, MetaDataObjectType } from "./metadata";
+import { MetaData, MetaDataObjectType, RelationType } from "./metadata";
 import { Table } from "./table";
 
 export abstract class DataMapper {
@@ -25,7 +27,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlCreate();
     }
-    write(sql, "sql");
+    // write(sql, "sql");
     return (await this.dbPool).query(sql);
   }
 
@@ -34,7 +36,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlTruncate();
     }
-    write(sql, "sql");
+    // write(sql, "sql");
     return (await this.dbPool).query(sql);
   }
 
@@ -54,7 +56,6 @@ export abstract class DataMapper {
   private static resultSetToDomainObjects<T extends DomainObject>(
     resultSet: ResultSet<any>
   ) {
-    write(resultSet);
     const domainObjects = resultSet.map((row) => {
       const tableColumnMap: Record<string, any> = {};
       let requestedDomainObj: T | null = null;
@@ -73,7 +74,6 @@ export abstract class DataMapper {
           dbColumnNameToColumnKey(dbColName)
         ] = value;
       }
-      // write(tableColumnMap);
 
       // create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
@@ -81,37 +81,102 @@ export abstract class DataMapper {
         const DomainObj = registry.getDomainObject<T>(domainKey);
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
-        for (const [tableColumnKey, value] of Object.entries(tableObj)) {
-          // TODO: O(n^2) find here, kinda bad.
-          let inMemoryValue = value;
-          if (Table.isForeignKey(tableColumnKey)) {
-            const foreignDomainKey = Table.foreignKeyDomain(tableColumnKey)!;
-            inMemoryValue = getVirtualDomainObject(
-              foreignDomainKey,
-              value as number
-            );
-          }
 
-          const metadataField = Mapper.metadata.findByTable(tableColumnKey);
-          switch (metadataField?.variant) {
+        //// REVISED IMPLEMENTATION HERE
+        Mapper.metadata.metadataFields.forEach((metadataField) => {
+          switch (metadataField.variant) {
             case MetaDataObjectType.COLUMN_MAP: {
-              domainObj[metadataField.domainFieldName] = inMemoryValue;
+              const { tableColumnKey, domainFieldName } = metadataField;
+              domainObj[domainFieldName] = tableObj[tableColumnKey];
               break;
             }
             case MetaDataObjectType.FOREIGN_KEY_MAP: {
-              // TODO
+              const { foreignKey, otherDomainKey, relationName, relationType } =
+                metadataField;
+              switch (relationType) {
+                case RelationType.BELONGS_TO: {
+                  domainObj[relationName] = getVirtualDomainObject({
+                    domainKey: otherDomainKey,
+                    knownId: tableObj[foreignKey],
+                    isSingle: true,
+                  });
+                  break;
+                }
+                case RelationType.HAS_ONE: {
+                  const query: Query = new Query(otherDomainKey);
+                  query.where({
+                    domainObjectField: foreignKey,
+                    value: tableObj["id"],
+                  });
+                  domainObj[relationName] = getVirtualDomainObject({
+                    domainKey: otherDomainKey,
+                    loader: query,
+                    isSingle: true,
+                  });
+                  break;
+                }
+                case RelationType.HAS_MANY: {
+                  const query: Query = new Query(otherDomainKey);
+                  query.where({
+                    domainObjectField: foreignKey,
+                    value: tableObj["id"],
+                  });
+                  domainObj[relationName] = getVirtualDomainObject({
+                    domainKey: otherDomainKey,
+                    loader: query,
+                    isSingle: false,
+                  });
+                  break;
+                }
+                default: {
+                  throw new Error("unexpected relation type");
+                }
+              }
               break;
             }
             default: {
-              throw new Error("invalid metadata object");
+              throw new Error("unexpected metadata object type");
             }
           }
-        }
-        // write(domainObj);
+        });
+
+        //// NEED TO CHANGE THIS IMPLEMENTATION
+        // the problem here is that we only add entries by the columns
+        // however, it makes more sense to iterate through the metadata
+        // because some fields like those due to a hasOne or hasMany associations
+        // do not have tableColumns on the object itself
+        // but rather on the associated object
+        // for (const [tableColumnKey, value] of Object.entries(tableObj)) {
+        //   // TODO: O(n^2) find here, kinda bad.
+        //   let inMemoryValue = value;
+        //   const metadataField = Mapper.metadata.findByTable(tableColumnKey);
+
+        //   if (Table.isForeignKey(tableColumnKey)) {
+        //     const foreignDomainKey = Table.foreignKeyDomain(tableColumnKey)!;
+        //     inMemoryValue = getVirtualDomainObject(
+        //       foreignDomainKey,
+        //       value as number
+        //     );
+        //   }
+
+        //   switch (metadataField?.variant) {
+        //     case MetaDataObjectType.COLUMN_MAP: {
+        //       domainObj[metadataField.domainFieldName] = inMemoryValue;
+        //       break;
+        //     }
+        //     case MetaDataObjectType.FOREIGN_KEY_MAP: {
+        //       // TODO
+
+        //       break;
+        //     }
+        //     default: {
+        //       throw new Error("invalid metadata object");
+        //     }
+        //   }
+        // }
+        //// NEED TO CHANGE THIS IMPLEMENTATION
         const actualDomainObj = new DomainObj(domainObj);
-        // write(actualDomainObj);
-        // write(domainKey);
-        // write(this.domainKey);
+
         registry.getIdentityMap().insert(domainKey, actualDomainObj);
         if (domainKey === this.domainKey) {
           requestedDomainObj = actualDomainObj;
@@ -125,17 +190,11 @@ export abstract class DataMapper {
       }
       return requestedDomainObj;
     });
-    write(domainObjects);
     return domainObjects;
   }
 }
 
 export namespace DataMapper {
-  export interface ConstructorParams {
-    TableClass: Constructor<Table>;
-    metadata?: Array<MetaDataObject>;
-  }
-
   export var Test = {
     async testConn(): Promise<boolean> {
       const client = await (await DataMapper.dbPool).getClient();
@@ -160,22 +219,37 @@ export namespace DataMapper {
 interface CreateMapperOptions<T extends typeof Table> {
   domainKey: string;
   Table?: T;
+  /**
+   * A mapping of relationName to options
+   */
+  belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
+  hasOne?: Record<string, MetaData.RelationOptionsWithoutName>;
+  hasMany?: Record<string, MetaData.RelationOptionsWithoutName>;
 }
 
 export function createMapper<T extends typeof Table>({
   domainKey,
   Table,
+  belongsTo = {},
+  hasOne = {},
+  hasMany = {},
 }: CreateMapperOptions<T>) {
-  if (!domainKey && !Table) {
-    throw new Error("at least one of domainKey or Table must be supplied");
-  }
   // Table takes priority
   const TableClass = Table || registry.getTable(domainKey!);
   const Mapper = class extends DataMapper {
     static domainKey = domainKey;
   };
-  // TODO: we generate some default metadata first
   Mapper.metadata = MetaData.generateDefaultMetaData(domainKey, TableClass);
+  // TODO: quite a lot of repetition here
+  for (const [key, options] of Object.entries(belongsTo)) {
+    Mapper.metadata.belongsTo({ relationName: key, ...options });
+  }
+  for (const [key, options] of Object.entries(hasOne)) {
+    Mapper.metadata.hasOne({ relationName: key, ...options });
+  }
+  for (const [key, options] of Object.entries(hasMany)) {
+    Mapper.metadata.hasMany({ relationName: key, ...options });
+  }
   return Mapper;
 }
 
