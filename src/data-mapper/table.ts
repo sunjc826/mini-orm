@@ -37,7 +37,13 @@ export abstract class Table {
   static references: Record<string, Table.Reference> = {};
   static referencedBy: Record<string, Table.ReferencedBy> = {};
 
+  /**
+   * A map of the form
+   * [ownTableColumnKey]: [otherDomainKey]
+   */
   static foreignKeys: Record<string, string> = {};
+  // TODO
+  static referencedByKeys: {};
 
   // TODO: Can also implement table constraints in future
 
@@ -55,10 +61,10 @@ export abstract class Table {
     type: DataTypes,
     options: Partial<AllOptions> = {}
   ): void {
-    write({ tableClassName: this.name });
-    write(Object.entries(this));
-    write(Object.entries(Object.getPrototypeOf(this)));
-    write({ column: name });
+    // write({ tableClassName: this.name });
+    // write(Object.entries(this));
+    // write(Object.entries(Object.getPrototypeOf(this)));
+    // write({ column: name });
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
@@ -69,6 +75,7 @@ export abstract class Table {
         ownTableForeignKeys: [name],
         otherTableCandidateKeys: [tableColumnKey],
       };
+      this.foreignKeys[name] = domainKey;
     }
     this.columns[name] = new COLUMN_TYPE_MAP[type](name, options);
   }
@@ -125,9 +132,10 @@ export abstract class Table {
   // TODO: this only works for a single column acting as a foreign key column
   // table inheritance would not work
   /**
-   * Returns the table key that the foreignKey points to. Returns null if tableColumn is not a foreign key.
+   * Returns the domainKey of the table that the foreignKey points to.
+   * Returns null if tableColumn is not a foreign key.
    * @param tableColumnKey
-   * @returns
+   * @returns Domain key.
    */
   static foreignKeyDomain(tableColumnKey: string) {
     return this.foreignKeys[tableColumnKey] || null;

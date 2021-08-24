@@ -11,7 +11,7 @@ import { Constructor } from "../helpers/types";
 import { write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { getVirtualDomainObject } from "./lazyLoad";
-import { MetaDataObject, MetaData, MetaDataObjectTypes } from "./metadata";
+import { MetaDataObject, MetaData, MetaDataObjectType } from "./metadata";
 import { Table } from "./table";
 
 export abstract class DataMapper {
@@ -94,8 +94,12 @@ export abstract class DataMapper {
 
           const metadataField = Mapper.metadata.findByTable(tableColumnKey);
           switch (metadataField?.variant) {
-            case MetaDataObjectTypes.columnMap: {
+            case MetaDataObjectType.COLUMN_MAP: {
               domainObj[metadataField.domainFieldName] = inMemoryValue;
+              break;
+            }
+            case MetaDataObjectType.FOREIGN_KEY_MAP: {
+              // TODO
               break;
             }
             default: {
@@ -171,7 +175,8 @@ export function createMapper<T extends typeof Table>({
     static domainKey = domainKey;
   };
   // TODO: we generate some default metadata first
-  Mapper.metadata = MetaData.generateDefaultMetaData(TableClass);
+  Mapper.metadata = MetaData.generateDefaultMetaData(domainKey, TableClass);
   return Mapper;
 }
+
 export { createTable } from "./table";

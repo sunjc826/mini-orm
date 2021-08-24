@@ -78,3 +78,20 @@ export function quote(str: string, comment: string = "") {
 export function brackets(str: string) {
   return `(${str})`;
 }
+
+// TODO: Get a better pluralize function
+export function primitivePluralize(str: string) {
+  return str + "s";
+}
+
+export function stripForeignKeyId(foreignKey: string) {
+  return foreignKey.replace(/id$/i, "");
+}
+
+export function addIdToName(relationName: string) {
+  return `${relationName}Id`;
+}
+
+export function stripHasManyRelation(relationName: string) {
+  return relationName.replace(/s$/, "");
+}

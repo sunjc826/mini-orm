@@ -159,6 +159,13 @@ export class Int extends ColumnType {
       }
     }
   }
+
+  getDomainKey(): string | null {
+    if (!this.foreignKey) {
+      return null;
+    }
+    return this.references!.domainKey;
+  }
 }
 
 export declare namespace Serial {

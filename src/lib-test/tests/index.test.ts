@@ -51,3 +51,16 @@ test("can select single table", async () => {
   expect(author).not.toBeNull();
   expect(author!.name).toEqual("Sam");
 });
+
+test("can use foreign key mapping", async () => {
+  await Promise.all([
+    pool.query(AuthorTest.insertSql),
+    pool.query(BookTest.insertSql),
+  ]);
+  const dukeNukem = await Author.findById<Author>(4);
+  const books = dukeNukem?.books!;
+  expect(books).toBeDefined;
+  expect(books.length).toEqual(1);
+  const whyImSoGreatBook = books[0];
+  // More tests
+});
