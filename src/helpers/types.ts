@@ -9,3 +9,7 @@ export type MethodProxy<T> = {
 export type Promisify<T> = {
   [idx in keyof T]: Promise<T[idx]>;
 };
+
+export type PromisifyArray<T> = Promisify<T> & {
+  length: Promise<number>;
+};

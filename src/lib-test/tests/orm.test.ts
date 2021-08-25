@@ -7,6 +7,7 @@ import { BookTable, BookTest } from "../tables/book";
 import "..";
 import { DbPool } from "../../connection/connect";
 import { Author } from "../models/author";
+import { PublisherTest } from "../tables/publisher";
 
 // test create table
 let pool: DbPool;
@@ -31,7 +32,11 @@ afterEach(async () => {
 interface CanCreateTableResult {
   table_exists: string;
 }
-test("can create table", async () => {
+
+/**
+ * Tests whether ORM can create registered tables.
+ */
+test("create table", async () => {
   let result: Array<CanCreateTableResult> = await pool.query(
     sqlIsTableExists(AuthorTable.tableName)
   );
@@ -40,7 +45,10 @@ test("can create table", async () => {
   expect(result[0].table_exists).toBeTruthy();
 });
 
-test("can select single table", async () => {
+/**
+ * Tests whether selecting from a single table is working.
+ */
+test("select single table", async () => {
   // insert some data with raw sql
   await pool.query(AuthorTest.insertSql);
   const nullAuthor = await Author.findById(0);
@@ -51,18 +59,30 @@ test("can select single table", async () => {
   expect(author!.name).toEqual("Sam");
 });
 
-test("can use foreign key mapping", async () => {
-  await Promise.all([
-    pool.query(AuthorTest.insertSql),
-    pool.query(BookTest.insertSql),
-  ]);
+/**
+ * Tests whether belongs to, has one, has many associations are working.
+ */
+test("foreign key mapping", async () => {
+  await pool.query(AuthorTest.insertSql);
+  await pool.query(BookTest.insertSql);
+  await pool.query(PublisherTest.insertSql);
   const dukeNukem = await Author.findById<Author>(4);
-  console.log("nukem", dukeNukem);
+  // has many
   const books = dukeNukem?.books!;
   expect(books).toBeDefined();
-  console.log(books);
-  console.log("length", await books.length);
-  // expect(books.length).toEqual(1);
-  // const whyImSoGreatBook = books[0];
-  // More tests
+  expect(await books.length).toEqual(1);
+  const whyImSoGreatBook = await books[0];
+  expect(whyImSoGreatBook.genre).toEqual("Autobiography");
+  // belongs to
+  expect(dukeNukem?.name).toEqual("Nukem");
+  expect(await whyImSoGreatBook.author.name).toEqual(dukeNukem?.name);
+  // has one
+  const publisher = whyImSoGreatBook.publisher;
+  console.log(publisher);
+  expect(await publisher.region).toEqual("International");
 });
+
+/**
+ * Tests whether inserting rows into a single table of the db is working.
+ */
+test("insert single table", async () => {});

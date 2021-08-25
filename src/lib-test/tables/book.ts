@@ -1,11 +1,5 @@
 import { createTable } from "../../data-mapper/table";
 
-// export class BookTable extends Table {
-//   name: string;
-//   genre: string;
-//   author_id: string;
-// }
-
 export const BookTable = createTable({
   tableName: "books",
   columns: {

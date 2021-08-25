@@ -1,10 +1,4 @@
-import { DataMapper } from "../../data-mapper";
-import { createTable, Table } from "../../data-mapper/table";
-
-// export class AuthorTable extends Table {
-//   name: string;
-//   age: number;
-// }
+import { createTable } from "../../data-mapper/table";
 
 export const AuthorTable = createTable({
   tableName: "authors",

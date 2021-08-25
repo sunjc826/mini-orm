@@ -1,4 +1,4 @@
-import { AnyFunction, Promisify } from "../helpers/types";
+import { AnyFunction, Promisify, PromisifyArray } from "../helpers/types";
 import { getRepoProxy, Repo } from "../repository";
 
 export abstract class DomainObject {
@@ -46,4 +46,4 @@ export function createDomainObject({
 
 export type BelongsTo<T extends DomainObject> = Promisify<T>;
 export type HasOne<T extends DomainObject> = Promisify<T>;
-export type HasMany<T extends DomainObject> = Promisify<Array<T>>;
+export type HasMany<T extends DomainObject> = PromisifyArray<Array<T>>;

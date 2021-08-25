@@ -82,7 +82,6 @@ export abstract class DataMapper {
           dbColumnNameToColumnKey(dbColName)
         ] = value;
       }
-
       // create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
