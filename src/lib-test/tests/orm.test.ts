@@ -8,6 +8,7 @@ import "..";
 import { DbPool } from "../../connection/connect";
 import { Author } from "../models/author";
 import { PublisherTest } from "../tables/publisher";
+import { registry } from "../../registry";
 
 // test create table
 let pool: DbPool;
@@ -80,6 +81,11 @@ test("foreign key mapping", async () => {
   const publisher = whyImSoGreatBook.publisher;
   console.log(publisher);
   expect(await publisher.region).toEqual("International");
+});
+
+test("topological sort", async () => {
+  const sorted = registry.topoSort();
+  expect(sorted).toEqual(["author", "book", "publisher"]);
 });
 
 /**

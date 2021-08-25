@@ -1,4 +1,6 @@
 import { DomainObject } from "../domain";
+import { Graph } from "../helpers/graph";
+import { registry } from "../registry";
 
 export class UnitOfWork {
   identityMap: IdentityMap;

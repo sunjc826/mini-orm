@@ -43,19 +43,9 @@ export abstract class Table {
    */
   static foreignKeys: Record<string, string> = {};
   // TODO
-  static referencedByKeys: {};
+  static referencedByKeys = {};
 
   // TODO: Can also implement table constraints in future
-
-  // TODO
-  /**
-   * Conducts a topological sort on dependencies caused by foreign key references.
-   * If table A has a foreign key column referencing table B, then inserting into A is 
-   * dependent on inserting into B. Suppose we have 2 objects, objA, objB, where
-   * objA may belong to obj B -- and we wish to insert both.
-   * The topo sort will force objB to be inserted first (regardless of whether objB.a === objA).
-   */
-  static topoSort() {}
 
   /**
    * Adds a column to the table.
@@ -68,10 +58,6 @@ export abstract class Table {
     type: DataTypes,
     options: Partial<AllOptions> = {}
   ): void {
-    // write({ tableClassName: this.name });
-    // write(Object.entries(this));
-    // write(Object.entries(Object.getPrototypeOf(this)));
-    // write({ column: name });
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
