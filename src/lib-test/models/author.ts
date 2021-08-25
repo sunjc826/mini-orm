@@ -1,8 +1,11 @@
-import { createDomainObject } from "../../domain";
+import { createDomainObject, HasMany } from "../../domain";
 import { Book } from "./book";
 
 export class Author extends createDomainObject({ domainKey: "author" }) {
   name: string;
   age: number;
-  books: Array<Book>; // has many
+  books: HasMany<Book>; // has many
 }
+
+const author = new Author({});
+author.books;

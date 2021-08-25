@@ -1,6 +1,6 @@
 import { DataMapper } from "../../data-mapper";
 import { AuthorTable, AuthorTest } from "../tables/author";
-import { clear, sqlIsTableExists, write } from "./helpers";
+import { clear, sqlIsTableExists } from "./helpers";
 import { BookTable, BookTest } from "../tables/book";
 
 // register stuff to registry
@@ -9,7 +9,6 @@ import { DbPool } from "../../connection/connect";
 import { Author } from "../models/author";
 
 // test create table
-
 let pool: DbPool;
 beforeAll(async () => {
   clear();

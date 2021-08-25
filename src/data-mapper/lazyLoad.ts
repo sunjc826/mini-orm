@@ -1,6 +1,7 @@
 import { DomainObject } from "../domain";
+import { MethodProxy, Promisify } from "../helpers/types";
 import { registry } from "../registry";
-import { getRepoProxy, Strategies } from "../repository";
+import { getRepoProxy } from "../repository";
 import { Query } from "../repository/query";
 
 export class ValueHolder<T extends DomainObject> {
@@ -84,9 +85,9 @@ export declare namespace ValueHolder {
 export function createVirtualProxy<T extends DomainObject>(
   valueHolder: ValueHolder<T>,
   permit = ["id"]
-): T {
+): Promisify<T> {
   const handler = {
-    get(target: ValueHolder<T>, prop: string) {
+    async get(target: ValueHolder<T>, prop: string) {
       return target.getProp(prop);
     },
     set(target: ValueHolder<T>, prop: string, value: any) {
@@ -99,7 +100,7 @@ export function createVirtualProxy<T extends DomainObject>(
   };
 
   // force casting to a regular domain object
-  return new Proxy(valueHolder, handler) as any as T;
+  return new Proxy(valueHolder, handler) as any as Promisify<T>;
 }
 
 type Options = ValueHolder.ConstructorOptions;

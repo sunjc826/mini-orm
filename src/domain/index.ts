@@ -1,4 +1,4 @@
-import { AnyFunction } from "../helpers/types";
+import { AnyFunction, Promisify } from "../helpers/types";
 import { getRepoProxy, Repo } from "../repository";
 
 export abstract class DomainObject {
@@ -7,7 +7,6 @@ export abstract class DomainObject {
 
   constructor(obj: Record<string, any>) {
     for (const [key, value] of Object.entries(obj)) {
-      // TODO: Account for foreign key mapping
       (this as any)[key] = value;
     }
   }
@@ -44,3 +43,7 @@ export function createDomainObject({
     },
   }) as any as typeof DomainObject & Repo;
 }
+
+export type BelongsTo<T extends DomainObject> = Promisify<T>;
+export type HasOne<T extends DomainObject> = Promisify<T>;
+export type HasMany<T extends DomainObject> = Promisify<Array<T>>;

@@ -18,7 +18,7 @@ export class MetaData {
   ): MetaData {
     const metadata = new MetaData();
     metadata.domainKey = domainKey;
-    for (const [columnName, columnAttributes] of Object.entries(
+    for (const [columnName, _columnAttributes] of Object.entries(
       Table.columns
     )) {
       // ignore foreign keys when generating metadata

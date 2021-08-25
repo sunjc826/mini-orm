@@ -147,42 +147,6 @@ export abstract class DataMapper {
             }
           }
         });
-
-        //// NEED TO CHANGE THIS IMPLEMENTATION
-        // the problem here is that we only add entries by the columns
-        // however, it makes more sense to iterate through the metadata
-        // because some fields like those due to a hasOne or hasMany associations
-        // do not have tableColumns on the object itself
-        // but rather on the associated object
-        // for (const [tableColumnKey, value] of Object.entries(tableObj)) {
-        //   // TODO: O(n^2) find here, kinda bad.
-        //   let inMemoryValue = value;
-        //   const metadataField = Mapper.metadata.findByTable(tableColumnKey);
-
-        //   if (Table.isForeignKey(tableColumnKey)) {
-        //     const foreignDomainKey = Table.foreignKeyDomain(tableColumnKey)!;
-        //     inMemoryValue = getVirtualDomainObject(
-        //       foreignDomainKey,
-        //       value as number
-        //     );
-        //   }
-
-        //   switch (metadataField?.variant) {
-        //     case MetaDataObjectType.COLUMN_MAP: {
-        //       domainObj[metadataField.domainFieldName] = inMemoryValue;
-        //       break;
-        //     }
-        //     case MetaDataObjectType.FOREIGN_KEY_MAP: {
-        //       // TODO
-
-        //       break;
-        //     }
-        //     default: {
-        //       throw new Error("invalid metadata object");
-        //     }
-        //   }
-        // }
-        //// NEED TO CHANGE THIS IMPLEMENTATION
         const actualDomainObj = new DomainObj(domainObj);
         registry.getIdentityMap().insert(domainKey, actualDomainObj);
         if (domainKey === this.domainKey) {
