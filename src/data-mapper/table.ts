@@ -48,6 +48,13 @@ export abstract class Table {
   // TODO: Can also implement table constraints in future
 
   // TODO
+  /**
+   * Conducts a topological sort on dependencies caused by foreign key references.
+   * If table A has a foreign key column referencing table B, then inserting into A is 
+   * dependent on inserting into B. Suppose we have 2 objects, objA, objB, where
+   * objA may belong to obj B -- and we wish to insert both.
+   * The topo sort will force objB to be inserted first (regardless of whether objB.a === objA).
+   */
   static topoSort() {}
 
   /**

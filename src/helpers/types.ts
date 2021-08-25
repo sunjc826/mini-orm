@@ -7,9 +7,13 @@ export type MethodProxy<T> = {
   [idx in keyof T]: T[idx] extends () => infer U ? Promise<U> : never;
 };
 export type Promisify<T> = {
-  [idx in keyof T]: Promise<T[idx]>;
+  [idx in keyof T]: Promise<T[idx]> | T[idx];
 };
 
 export type PromisifyArray<T> = Promisify<T> & {
   length: Promise<number>;
+};
+
+export type OwnKeyValues<T> = {
+  [idx in keyof T]: T[idx];
 };

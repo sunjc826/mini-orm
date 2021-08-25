@@ -147,7 +147,10 @@ export abstract class DataMapper {
           }
         });
         const actualDomainObj = new DomainObj(domainObj);
-        registry.getIdentityMap().insert(domainKey, actualDomainObj);
+        registry.unitOfWork.registerClean({
+          domainKey,
+          domainObject: actualDomainObj,
+        });
         if (domainKey === this.domainKey) {
           requestedDomainObj = actualDomainObj;
         }

@@ -1,7 +1,16 @@
-import { AnyFunction, Promisify, PromisifyArray } from "../helpers/types";
+import {
+  AnyFunction,
+  OwnKeyValues,
+  Promisify,
+  PromisifyArray,
+} from "../helpers/types";
+import { registry } from "../registry";
 import { getRepoProxy, Repo } from "../repository";
 
-export abstract class DomainObject {
+// unfortunately I can't keep the abstract keyword here since I would like to have factory methods
+// another option is to define it on the NewDomainObject class defined below but that would mean having
+// the same methods on different prototypes
+export class DomainObject {
   static domainKey: string;
   id: number;
 
@@ -9,6 +18,22 @@ export abstract class DomainObject {
     for (const [key, value] of Object.entries(obj)) {
       (this as any)[key] = value;
     }
+  }
+
+  static create<T extends DomainObject>(ownKeyValues: OwnKeyValues<T>) {
+    const instance = new this(ownKeyValues);
+    registry.unitOfWork.registerNew({
+      domainKey: this.domainKey,
+      domainObject: instance,
+    });
+    return instance;
+  }
+
+  destroy() {
+    registry.unitOfWork.registerRemove({
+      domainKey: (this.constructor as typeof DomainObject).domainKey,
+      domainObject: this,
+    });
   }
 }
 
