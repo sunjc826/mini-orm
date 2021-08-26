@@ -84,7 +84,7 @@ test("foreign key mapping", async () => {
 });
 
 test("topological sort", async () => {
-  const sorted = registry.topoSort();
+  const sorted = registry.getCorrectInsertOrder();
   expect(sorted).toEqual(["author", "book", "publisher"]);
 });
 

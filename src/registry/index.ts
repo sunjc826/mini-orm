@@ -100,7 +100,7 @@ class Registry {
    * objA may belong to obj B -- and we wish to insert both.
    * The topo sort will force objB to be inserted first (regardless of whether objB.a === objA).
    */
-  topoSort(): Array<string> {
+  getCorrectInsertOrder(): Array<string> {
     if (this.topoSortedDomainKeys) {
       return this.topoSortedDomainKeys;
     }
@@ -116,6 +116,11 @@ class Registry {
     }
     this.topoSortedDomainKeys = graph.getSortedValues();
     return this.topoSortedDomainKeys;
+  }
+
+  getCorrectDeleteOrder(): Array<string> {
+    const sorted = this.getCorrectInsertOrder();
+    return sorted.reverse();
   }
 }
 

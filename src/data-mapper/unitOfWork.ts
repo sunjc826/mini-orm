@@ -1,11 +1,21 @@
+import { PoolClient } from "pg";
 import { DataMapper } from ".";
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
 
 export class UnitOfWork {
   identityMap: IdentityMap;
+  /**
+   * Newly created objects, not present in db.
+   */
   newObjects: UnitOfWork.RegistrationRecord = {};
+  /**
+   * Objects in a modified state, not updated in db.
+   */
   dirtyObjects: UnitOfWork.RegistrationRecord = {};
+  /**
+   * Objects to delete, not removed in db.
+   */
   removedObjects: UnitOfWork.RegistrationRecord = {};
   constructor() {
     this.identityMap = new IdentityMap();
@@ -49,18 +59,21 @@ export class UnitOfWork {
     this.removedObjects[domainKey].push(domainObject);
   }
 
-  forceClear() {
+  /**
+   * Clears all newly created, updated, or removed objects before changes are persisted to db.
+   */
+  cleanup() {
     this.newObjects = {};
     this.dirtyObjects = {};
     this.removedObjects = {};
   }
 
-  private async insertNew() {
-    const sorted = registry.topoSort();
+  private async insertNew(client: PoolClient) {
+    const sorted = registry.getCorrectInsertOrder();
     for (const domainKey of sorted) {
       const idArr = await registry
         .getMapper(domainKey)
-        .insert(this.newObjects[domainKey]);
+        .insert(this.newObjects[domainKey], client);
       this.newObjects[domainKey].forEach((obj, index) => {
         obj.id = idArr[index];
       });
@@ -68,10 +81,16 @@ export class UnitOfWork {
   }
 
   // TODO
-  private async updateDirty() {}
+  private async updateDirty(client: PoolClient) {}
 
-  // TODO
-  private async deleteRemoved() {}
+  private async deleteRemoved(client: PoolClient) {
+    const sorted = registry.getCorrectDeleteOrder();
+    for (const domainKey of sorted) {
+      await registry
+        .getMapper(domainKey)
+        .delete(this.removedObjects[domainKey], client);
+    }
+  }
 
   /**
    * Move new and updated objects to identity map. Remove deleted objects from identity map.
@@ -97,16 +116,23 @@ export class UnitOfWork {
     }
   }
 
+  /**
+   * Commits all registered changes to database.
+   * @returns
+   */
   async commit() {
     const client = await (await DataMapper.dbPool).getClient();
-    await client?.query("BEGIN;");
-    await this.insertNew();
-    this.updateDirty();
-    this.deleteRemoved();
+    if (!client) {
+      return null;
+    }
+    await client.query("BEGIN;");
+    await this.insertNew(client);
+    await this.updateDirty(client);
+    await this.deleteRemoved(client);
     this.updateIdentityMap();
-    await client?.query("END");
-    this.forceClear();
-    return client?.release();
+    await client.query("COMMIT;");
+    this.cleanup();
+    return client.release();
   }
 }
 

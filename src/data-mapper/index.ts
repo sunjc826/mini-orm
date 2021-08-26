@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { Pool, PoolClient } from "pg";
 import { getPool } from "../connection";
 import { DbPool, ResultSet } from "../connection/connect";
 import { DomainObject } from "../domain";
@@ -20,7 +21,6 @@ import { Table } from "./table";
 import { ID_COLUMN_NAME } from "./types";
 
 export abstract class DataMapper {
-  // TODO: config
   static domainKey: string;
   static dbPool: Promise<DbPool> = getPool(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
@@ -55,8 +55,13 @@ export abstract class DataMapper {
    * Returns an array of domain objects when given a sql query.
    * @param sql Sql query string.
    */
-  static async select<T extends DomainObject>(sql: string): Promise<Array<T>> {
-    const resultSet = await (await this.dbPool).query(sql);
+  static async select<T extends DomainObject>(
+    sql: string,
+    client?: PoolClient
+  ): Promise<Array<T>> {
+    const resultSet = (await (client || (await this.dbPool)).query(
+      sql
+    )) as ResultSet<T>;
     return this.resultSetToDomainObjects(resultSet);
   }
 
@@ -65,19 +70,44 @@ export abstract class DataMapper {
    * @param objects
    */
   static async insert<T extends DomainObject>(
-    objects: Array<T>
+    objects: Array<T>,
+    client?: PoolClient
   ): Promise<Array<T>> {
     if (objects.length === 0) {
       return [];
     }
     const sql = await this.domainObjectToSql(objects);
-    const idArr = await (await this.dbPool).query(sql);
+    const idArr = (await (client || (await this.dbPool)).query(
+      sql
+    )) as ResultSet<T>;
     return idArr;
+  }
+
+  /**
+   * Deletes the rows corresponding to the provided objectIds.
+   * @param objectIds
+   * @param client
+   * @returns
+   */
+  static async delete(objectIds: Array<number>, client?: PoolClient) {
+    if (objectIds.length === 0) {
+      return;
+    }
+    const sql = await this.getDeleteSql(objectIds);
+    await (client || (await this.dbPool)).query(sql);
+  }
+
+  private static getDeleteSql(objectIds: Array<number>): string {
+    const Table = registry.getTable(this.domainKey);
+    const tableName = Table.tableName;
+    const idString = brackets(objectIds.map((id) => id.toString()).join(","));
+    const sql = `DELETE FROM ${tableName} WHERE id IN ${idString} CASCADE`;
+    return sql;
   }
 
   private static async domainObjectToSql<T extends DomainObject>(
     domainObjects: Array<T>
-  ) {
+  ): Promise<string> {
     const domainKey = (domainObjects[0].constructor as typeof DomainObject)
       .domainKey;
     const Table = registry.getTable(domainKey);
