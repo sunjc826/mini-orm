@@ -101,7 +101,7 @@ export abstract class DataMapper {
     const Table = registry.getTable(this.domainKey);
     const tableName = Table.tableName;
     const idString = brackets(objectIds.map((id) => id.toString()).join(","));
-    const sql = `DELETE FROM ${tableName} WHERE id IN ${idString} CASCADE`;
+    const sql = `DELETE FROM ${tableName} WHERE id IN ${idString};`;
     return sql;
   }
 

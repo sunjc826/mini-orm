@@ -50,22 +50,25 @@ export class UnitOfWork {
     this.dirtyObjects[domainKey].push(domainObject);
   }
 
-  // TODO: can consider using domainObjectId to index each object instead
   registerRemove<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
   }: UnitOfWork.RegisterObjectOptions<T>) {
-    this.removedObjects[domainKey].push(domainObject);
+    this.removedObjects[domainKey].push(
+      domainObject ? domainObject.id : domainObjectId
+    );
   }
 
   /**
    * Clears all newly created, updated, or removed objects before changes are persisted to db.
    */
-  cleanup() {
-    this.newObjects = {};
-    this.dirtyObjects = {};
-    this.removedObjects = {};
+  reset() {
+    [this.newObjects, this.dirtyObjects, this.removedObjects].forEach((ele) => {
+      for (const key of Object.keys(ele)) {
+        ele[key] = [];
+      }
+    });
   }
 
   private async insertNew(client: PoolClient) {
@@ -131,7 +134,7 @@ export class UnitOfWork {
     await this.deleteRemoved(client);
     this.updateIdentityMap();
     await client.query("COMMIT;");
-    this.cleanup();
+    this.reset();
     return client.release();
   }
 }

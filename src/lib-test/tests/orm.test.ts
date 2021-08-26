@@ -91,7 +91,7 @@ test("topological sort", async () => {
 /**
  * Tests whether inserting rows into a single table of the db is working.
  */
-test("insert single table", async () => {
+test("insert into single table", async () => {
   Author.create<Author>({ name: "Tester", age: 30 });
   await DomainObject.commit();
   const author = (await Author.find({
@@ -100,4 +100,23 @@ test("insert single table", async () => {
   }).exec()) as Author;
   expect(author).toBeDefined();
   expect(author.name).toEqual("Tester");
+});
+
+test("delete from single table", async () => {
+  Author.create<Author>({ name: "Tester", age: 30 });
+  await DomainObject.commit();
+  let author = (await Author.find({
+    domainObjectField: "name",
+    value: "Tester",
+  }).exec()) as Author;
+  expect(author).toBeDefined();
+  expect(author.name).toEqual("Tester");
+
+  author.destroy();
+  await DomainObject.commit();
+  author = (await Author.find({
+    domainObjectField: "name",
+    value: "Tester",
+  }).exec()) as Author;
+  expect(author).toBeNull();
 });
