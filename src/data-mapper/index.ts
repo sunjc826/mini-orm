@@ -66,9 +66,9 @@ export abstract class DataMapper {
    */
   static async insert<T extends DomainObject>(
     objects: Array<T>
-  ): Promise<Array<T> | null> {
+  ): Promise<Array<T>> {
     if (objects.length === 0) {
-      return null;
+      return [];
     }
     const sql = await this.domainObjectToSql(objects);
     const idArr = await (await this.dbPool).query(sql);
@@ -85,29 +85,52 @@ export abstract class DataMapper {
 
     const sqlColumnNamesPartArr: Array<string> = [];
     const sqlValuesPartArr: Array<Array<any>> = new Array(domainObjects.length);
+    for (let i = 0; i < domainObjects.length; i++) {
+      sqlValuesPartArr[i] = [];
+    }
+
     for (const metadataField of this.metadata.metadataFields) {
+      switch (metadataField.variant) {
+        case MetaDataObjectType.COLUMN_MAP: {
+          const { tableColumnKey } = metadataField;
+          if (tableColumnKey === ID_COLUMN_NAME) {
+            continue;
+          }
+          const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+          sqlColumnNamesPartArr.push(actualDbColumnName);
+          break;
+        }
+        case MetaDataObjectType.FOREIGN_KEY_MAP: {
+          const { foreignKey, relationType } = metadataField;
+          if (relationType === RelationType.BELONGS_TO) {
+            const actualDbColumnName = Table.getDbColumnName(foreignKey);
+            sqlColumnNamesPartArr.push(actualDbColumnName);
+          }
+        }
+      }
+    }
+    tag: for (const metadataField of this.metadata.metadataFields) {
       // foreach doesn't work well with async logic that I want to run sequentially
       for (let i = 0; i < domainObjects.length; i++) {
         const domainObj = domainObjects[i] as Record<string, any>;
         switch (metadataField.variant) {
           case MetaDataObjectType.COLUMN_MAP: {
             const { domainFieldName, tableColumnKey } = metadataField;
-            const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
-            sqlColumnNamesPartArr.push(actualDbColumnName);
-            sqlValuesPartArr[i].push(domainObj[domainFieldName]);
+            if (tableColumnKey === ID_COLUMN_NAME) {
+              continue tag;
+            }
+
+            sqlValuesPartArr[i].push(
+              Table.convertColumnValueToSqlString(
+                tableColumnKey,
+                domainObj[domainFieldName]
+              )
+            );
             break;
           }
           case MetaDataObjectType.FOREIGN_KEY_MAP: {
-            const {
-              domainKey,
-              foreignKey,
-              otherDomainKey,
-              relationName,
-              relationType,
-            } = metadataField;
+            const { relationName, relationType } = metadataField;
             if (relationType === RelationType.BELONGS_TO) {
-              const actualDbColumnName = Table.getDbColumnName(foreignKey);
-              sqlColumnNamesPartArr.push(actualDbColumnName);
               // the reason why we use await here is that the object
               // may be a virtual proxy (for which await is needed) or a regular object.
               sqlValuesPartArr[i].push(

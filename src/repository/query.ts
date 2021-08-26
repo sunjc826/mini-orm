@@ -162,24 +162,24 @@ class Criterion {
         `no match for domain object field: ${this.domainObjectField}`
       );
     }
-    let tableKey;
+    let tableColumnKey;
     switch (field.variant) {
       case MetaDataObjectType.COLUMN_MAP: {
-        tableKey = field.tableColumnKey;
+        tableColumnKey = field.tableColumnKey;
         break;
       }
       case MetaDataObjectType.FOREIGN_KEY_MAP: {
-        tableKey = field.foreignKey;
+        tableColumnKey = field.foreignKey;
         break;
       }
       default: {
         throw new Error("unexpected metadata type");
       }
     }
-    const actualDbColumnName = Table.getDbColumnName(tableKey);
+    const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
     return `${formatDbColumn(Table.tableName, actualDbColumnName)} ${
       this.sqlOperator
-    } ${this.value}`;
+    } ${Table.convertColumnValueToSqlString(tableColumnKey, this.value)}`;
   }
 }
 

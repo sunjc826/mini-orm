@@ -9,6 +9,7 @@ import { DbPool } from "../../connection/connect";
 import { Author } from "../models/author";
 import { PublisherTest } from "../tables/publisher";
 import { registry } from "../../registry";
+import { DomainObject } from "../../domain";
 
 // test create table
 let pool: DbPool;
@@ -91,4 +92,13 @@ test("topological sort", async () => {
 /**
  * Tests whether inserting rows into a single table of the db is working.
  */
-test("insert single table", async () => {});
+test("insert single table", async () => {
+  Author.create<Author>({ name: "Tester", age: 30 });
+  await DomainObject.commit();
+  const author = (await Author.find({
+    domainObjectField: "name",
+    value: "Tester",
+  }).exec()) as Author;
+  expect(author).toBeDefined();
+  expect(author.name).toEqual("Tester");
+});

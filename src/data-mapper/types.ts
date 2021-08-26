@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { quote } from "../helpers";
 import { Constructor } from "../helpers/types";
 
 export const ID_COLUMN_NAME = "id" as const;
@@ -79,6 +80,10 @@ export abstract class ColumnType {
   toSqlCreate() {
     return `${this.getName()} ${this.getType().toUpperCase()} ${this.getOptions()}`;
   }
+
+  toSqlString(data: any) {
+    return data.toString();
+  }
 }
 
 export declare namespace Varchar {
@@ -105,10 +110,17 @@ export class Varchar extends ColumnType {
   getType() {
     return `${this.type}(${this.limit})`;
   }
+
+  toSqlString(data: any) {
+    return quote(data, "field");
+  }
 }
 
 export class Text extends ColumnType {
   type = text;
+  toSqlString(data: any) {
+    return quote(data, "field");
+  }
 }
 
 export declare namespace Int {

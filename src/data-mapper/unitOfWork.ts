@@ -13,60 +13,98 @@ export class UnitOfWork {
 
   register(domainKey: string) {
     this.identityMap.register(domainKey);
+    this.newObjects[domainKey] = [];
+    this.dirtyObjects[domainKey] = [];
+    this.removedObjects[domainKey] = [];
   }
 
-  registerClean(options: UnitOfWork.RegisterObjectOptions) {
+  registerClean<T extends DomainObject>(
+    options: UnitOfWork.RegisterObjectOptions<T>
+  ) {
     this.identityMap.insert(options);
   }
 
-  registerNew({
+  registerNew<T extends DomainObject>({
     domainKey,
     domainObject,
-  }: UnitOfWork.RegisterNewObjectOptions) {
+  }: UnitOfWork.RegisterNewObjectOptions<T>) {
     this.newObjects[domainKey].push(domainObject);
   }
 
   // TODO: can consider using domainObjectId to index each object instead
-  registerDirty({
+  registerDirty<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
-  }: UnitOfWork.RegisterObjectOptions) {
+  }: UnitOfWork.RegisterObjectOptions<T>) {
     this.dirtyObjects[domainKey].push(domainObject);
   }
 
   // TODO: can consider using domainObjectId to index each object instead
-  registerRemove({
+  registerRemove<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
-  }: UnitOfWork.RegisterObjectOptions) {
+  }: UnitOfWork.RegisterObjectOptions<T>) {
     this.removedObjects[domainKey].push(domainObject);
   }
 
+  forceClear() {
+    this.newObjects = {};
+    this.dirtyObjects = {};
+    this.removedObjects = {};
+  }
+
   // TODO
-  async insertNew() {
+  private async insertNew() {
     const sorted = registry.topoSort();
     for (const domainKey of sorted) {
-      const idArr = registry
+      const idArr = await registry
         .getMapper(domainKey)
         .insert(this.newObjects[domainKey]);
+      this.newObjects[domainKey].forEach((obj, index) => {
+        obj.id = idArr[index];
+      });
     }
   }
 
   // TODO
-  async updateDirty() {}
+  private async updateDirty() {}
 
   // TODO
-  async deleteRemoved() {}
+  private async deleteRemoved() {}
+
+  /**
+   * Move new and updated objects to identity map. Remove deleted objects from identity map.
+   */
+  private async updateIdentityMap() {
+    // update new objects
+    for (const [domainKey, objArr] of Object.entries(this.newObjects)) {
+      for (const obj of objArr) {
+        this.identityMap.insert({
+          domainKey,
+          domainObject: obj,
+        });
+      }
+    }
+
+    for (const [domainKey, objArr] of Object.entries(this.dirtyObjects)) {
+      for (const obj of objArr) {
+        this.identityMap.insert({
+          domainKey,
+          domainObject: obj,
+        });
+      }
+    }
+  }
 
   async commit() {
-    // TODO: being transaction
     const client = await (await DataMapper.dbPool).getClient();
     await client?.query("BEGIN;");
     this.insertNew();
     this.updateDirty();
     this.deleteRemoved();
+    this.updateIdentityMap();
     await client?.query("END");
     return client?.release;
   }
@@ -75,14 +113,14 @@ export class UnitOfWork {
 export declare namespace UnitOfWork {
   export type RegistrationRecord = Record<string, Array<any>>;
 
-  export interface RegisterNewObjectOptions {
+  export interface RegisterNewObjectOptions<T extends DomainObject> {
     domainKey: string;
-    domainObject: DomainObject;
+    domainObject: T;
   }
 
-  export interface RegisterObjectOptions {
+  export interface RegisterObjectOptions<T extends DomainObject> {
     domainKey: string;
-    domainObject: DomainObject;
+    domainObject: T;
     domainObjectId?: number;
   }
 }
@@ -101,11 +139,11 @@ class IdentityMap {
     return this.map[domainKey][id];
   }
 
-  insert({
+  insert<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
-  }: UnitOfWork.RegisterObjectOptions) {
+  }: UnitOfWork.RegisterObjectOptions<T>) {
     const id = domainObjectId || domainObject.id;
     this.map[domainKey][id] = domainObject;
   }

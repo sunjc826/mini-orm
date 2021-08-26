@@ -20,13 +20,19 @@ export class DomainObject {
     }
   }
 
-  static create<T extends DomainObject>(ownKeyValues: OwnKeyValues<T>) {
+  static create<T extends DomainObject>(
+    ownKeyValues: Partial<OwnKeyValues<T>>
+  ) {
     const instance = new this(ownKeyValues);
     registry.unitOfWork.registerNew({
       domainKey: this.domainKey,
       domainObject: instance,
     });
     return instance;
+  }
+
+  static async commit() {
+    return registry.unitOfWork.commit();
   }
 
   destroy() {

@@ -88,6 +88,25 @@ export abstract class Table {
   }
 
   /**
+   * Returns the column type object of the given column key.
+   * @param tableColumnKey
+   * @returns ColumnType object.
+   */
+  static getColumnType(tableColumnKey: string) {
+    return this.columns[tableColumnKey];
+  }
+
+  /**
+   * Returns the sql string representation of a column value. Particularly useful for string values.
+   * @param tableColumnKey
+   * @param value
+   * @returns Sql string representation of a column value
+   */
+  static convertColumnValueToSqlString(tableColumnKey: string, value: any) {
+    return this.columns[tableColumnKey].toSqlString(value);
+  }
+
+  /**
    * Returns the actual DB column name of a certain column.
    * @param tableColumnKey
    * @returns Actual DB column name.
