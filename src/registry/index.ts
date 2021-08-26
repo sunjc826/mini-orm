@@ -27,6 +27,7 @@ class Registry {
   registry: Record<string, RegistryItem> = {};
   unitOfWork: UnitOfWork = new UnitOfWork();
   tableNameToDomainKey: Record<string, string> = {};
+  topoSortedDomainKeys: Array<string>;
   register<
     T extends typeof Table,
     D extends DomainObject,
@@ -100,6 +101,9 @@ class Registry {
    * The topo sort will force objB to be inserted first (regardless of whether objB.a === objA).
    */
   topoSort(): Array<string> {
+    if (this.topoSortedDomainKeys) {
+      return this.topoSortedDomainKeys;
+    }
     // prepare the graph
     const domainKeys = this.getDomainKeys();
     const graph = new Graph(domainKeys.length, domainKeys);
@@ -110,8 +114,8 @@ class Registry {
         graph.addEdgeByValue(dependency, domainKey);
       }
     }
-    const sortedKeys = graph.getSortedValues();
-    return sortedKeys;
+    this.topoSortedDomainKeys = graph.getSortedValues();
+    return this.topoSortedDomainKeys;
   }
 }
 

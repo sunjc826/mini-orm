@@ -3,11 +3,13 @@ import { getPool } from "../connection";
 import { DbPool, ResultSet } from "../connection/connect";
 import { DomainObject } from "../domain";
 import {
+  brackets,
   dbColumnNameToColumnKey,
   extractDomainKeyFromTable,
+  formatResultSetColumnName,
   splitResultSetColumnName,
 } from "../helpers";
-import { Constructor } from "../helpers/types";
+import { Constructor, Promisify } from "../helpers/types";
 import { write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { Query } from "../repository/query";
@@ -15,6 +17,7 @@ import { Operators } from "../repository/types";
 import { getVirtualDomainObject } from "./lazyLoad";
 import { MetaData, MetaDataObjectType, RelationType } from "./metadata";
 import { Table } from "./table";
+import { ID_COLUMN_NAME } from "./types";
 
 export abstract class DataMapper {
   // TODO: config
@@ -49,12 +52,85 @@ export abstract class DataMapper {
   }
 
   /**
-   * Returns a result set when given a sql query.
+   * Returns an array of domain objects when given a sql query.
    * @param sql Sql query string.
    */
   static async select<T extends DomainObject>(sql: string): Promise<Array<T>> {
     const resultSet = await (await this.dbPool).query(sql);
     return this.resultSetToDomainObjects(resultSet);
+  }
+
+  /**
+   * Returns an array of object ids when given an array of domain objects of a specific type to insert into db.
+   * @param objects
+   */
+  static async insert<T extends DomainObject>(
+    objects: Array<T>
+  ): Promise<Array<T> | null> {
+    if (objects.length === 0) {
+      return null;
+    }
+    const sql = await this.domainObjectToSql(objects);
+    const idArr = await (await this.dbPool).query(sql);
+    return idArr;
+  }
+
+  private static async domainObjectToSql<T extends DomainObject>(
+    domainObjects: Array<T>
+  ) {
+    const domainKey = (domainObjects[0].constructor as typeof DomainObject)
+      .domainKey;
+    const Table = registry.getTable(domainKey);
+    const tableName = Table.tableName;
+
+    const sqlColumnNamesPartArr: Array<string> = [];
+    const sqlValuesPartArr: Array<Array<any>> = new Array(domainObjects.length);
+    for (const metadataField of this.metadata.metadataFields) {
+      // foreach doesn't work well with async logic that I want to run sequentially
+      for (let i = 0; i < domainObjects.length; i++) {
+        const domainObj = domainObjects[i] as Record<string, any>;
+        switch (metadataField.variant) {
+          case MetaDataObjectType.COLUMN_MAP: {
+            const { domainFieldName, tableColumnKey } = metadataField;
+            const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+            sqlColumnNamesPartArr.push(actualDbColumnName);
+            sqlValuesPartArr[i].push(domainObj[domainFieldName]);
+            break;
+          }
+          case MetaDataObjectType.FOREIGN_KEY_MAP: {
+            const {
+              domainKey,
+              foreignKey,
+              otherDomainKey,
+              relationName,
+              relationType,
+            } = metadataField;
+            if (relationType === RelationType.BELONGS_TO) {
+              const actualDbColumnName = Table.getDbColumnName(foreignKey);
+              sqlColumnNamesPartArr.push(actualDbColumnName);
+              // the reason why we use await here is that the object
+              // may be a virtual proxy (for which await is needed) or a regular object.
+              sqlValuesPartArr[i].push(
+                await (domainObj[relationName] as Promisify<DomainObject>).id
+              );
+            }
+            break;
+          }
+          default: {
+            throw new Error("unexpected metadata object type");
+          }
+        }
+      }
+    }
+    const sqlColumnNamesPart = brackets(sqlColumnNamesPartArr.join(","));
+    const sqlValuesPart = sqlValuesPartArr
+      .map((arr) => brackets(arr.join(", ")))
+      .join(",");
+    const sql = `INSERT INTO ${tableName} ${sqlColumnNamesPart}
+    VALUES ${sqlValuesPart}
+    RETURNING ${ID_COLUMN_NAME}
+    ;`;
+    return sql;
   }
 
   /**
@@ -89,7 +165,6 @@ export abstract class DataMapper {
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
 
-        //// REVISED IMPLEMENTATION HERE
         Mapper.metadata.metadataFields.forEach((metadataField) => {
           switch (metadataField.variant) {
             case MetaDataObjectType.COLUMN_MAP: {

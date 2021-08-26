@@ -37,7 +37,7 @@ export function formatDbColumn(tableName: string, dbColName: string) {
 const SEPARATOR = "_____";
 
 /**
- * Returns a string in the form of table_name-col_name. Used for naming columns selected from db.
+ * Returns a string in the form of table_name + SEPARATOR + col_name. Used for naming columns selected from db.
  * @param tableName
  * @param dbColName
  * @returns

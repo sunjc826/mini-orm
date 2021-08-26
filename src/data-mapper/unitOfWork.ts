@@ -1,5 +1,5 @@
+import { DataMapper } from ".";
 import { DomainObject } from "../domain";
-import { Graph } from "../helpers/graph";
 import { registry } from "../registry";
 
 export class UnitOfWork {
@@ -45,18 +45,30 @@ export class UnitOfWork {
   }
 
   // TODO
-  insertNew() {}
+  async insertNew() {
+    const sorted = registry.topoSort();
+    for (const domainKey of sorted) {
+      const idArr = registry
+        .getMapper(domainKey)
+        .insert(this.newObjects[domainKey]);
+    }
+  }
 
   // TODO
-  updateDirty() {}
+  async updateDirty() {}
 
   // TODO
-  deleteRemoved() {}
+  async deleteRemoved() {}
 
-  commit() {
+  async commit() {
+    // TODO: being transaction
+    const client = await (await DataMapper.dbPool).getClient();
+    await client?.query("BEGIN;");
     this.insertNew();
     this.updateDirty();
     this.deleteRemoved();
+    await client?.query("END");
+    return client?.release;
   }
 }
 

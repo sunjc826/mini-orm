@@ -34,7 +34,7 @@ export class ValueHolder<T extends DomainObject> {
     if (this.id) {
       let obj = idMap.find(this.domainKey, this.id);
       if (obj === undefined) {
-        obj = await Repo.strategy.findById(this.id);
+        obj = await Repo.findById(this.id);
       }
       this.value = obj;
     } else if (this.loader) {
@@ -91,6 +91,7 @@ export function createVirtualProxy<T extends DomainObject>(
       return target.getProp(prop);
     },
     set(target: ValueHolder<T>, prop: string, value: any) {
+      // TODO: allow update of fields
       if (!(prop in permit.values())) {
         return false;
       }
