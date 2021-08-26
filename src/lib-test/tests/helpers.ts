@@ -11,8 +11,8 @@ export function sqlIsTableExists(
   return `SELECT EXISTS (
     SELECT 1
     FROM   information_schema.tables 
-    WHERE  table_schema = ${quote(schema)}
-    AND    table_name = ${quote(tableName)}
+    WHERE  table_schema = ${quote(schema, "schema")}
+    AND    table_name = ${quote(tableName, "table")}
     ) AS table_exists;`;
 }
 

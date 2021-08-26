@@ -55,7 +55,6 @@ export class UnitOfWork {
     this.removedObjects = {};
   }
 
-  // TODO
   private async insertNew() {
     const sorted = registry.topoSort();
     for (const domainKey of sorted) {
@@ -77,7 +76,7 @@ export class UnitOfWork {
   /**
    * Move new and updated objects to identity map. Remove deleted objects from identity map.
    */
-  private async updateIdentityMap() {
+  private updateIdentityMap() {
     // update new objects
     for (const [domainKey, objArr] of Object.entries(this.newObjects)) {
       for (const obj of objArr) {
@@ -101,12 +100,13 @@ export class UnitOfWork {
   async commit() {
     const client = await (await DataMapper.dbPool).getClient();
     await client?.query("BEGIN;");
-    this.insertNew();
+    await this.insertNew();
     this.updateDirty();
     this.deleteRemoved();
     this.updateIdentityMap();
     await client?.query("END");
-    return client?.release;
+    this.forceClear();
+    return client?.release();
   }
 }
 

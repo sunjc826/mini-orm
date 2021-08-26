@@ -11,7 +11,6 @@ import { PublisherTest } from "../tables/publisher";
 import { registry } from "../../registry";
 import { DomainObject } from "../../domain";
 
-// test create table
 let pool: DbPool;
 beforeAll(async () => {
   clear();
