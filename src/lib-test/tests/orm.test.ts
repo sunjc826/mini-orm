@@ -89,10 +89,7 @@ test("topological sort", async () => {
   expect(sorted).toEqual(["author", "book", "publisher"]);
 });
 
-/**
- * Tests whether inserting rows into a single table of the db is working.
- */
-test("insert into single table", async () => {
+async function createTestAuthor() {
   Author.create<Author>({ name: "Tester", age: 30 });
   await DomainObject.commit();
   const author = (await Author.find({
@@ -101,24 +98,36 @@ test("insert into single table", async () => {
   }).exec()) as Author;
   expect(author).toBeDefined();
   expect(author.name).toEqual("Tester");
+  return author;
+}
+
+async function findTestAuthor() {
+  return (await Author.find({
+    domainObjectField: "name",
+    value: "Tester",
+  }).exec()) as Author;
+}
+
+/**
+ * Tests whether inserting rows into a single table of the db is working.
+ */
+test("insert into single table", async () => {
+  await createTestAuthor();
 });
 
 test("delete from single table", async () => {
-  Author.create<Author>({ name: "Tester", age: 30 });
-  await DomainObject.commit();
-  let author = (await Author.find({
-    domainObjectField: "name",
-    value: "Tester",
-  }).exec()) as Author;
-  expect(author).toBeDefined();
-  expect(author.name).toEqual("Tester");
+  const author = await createTestAuthor();
   author.destroy();
   await DomainObject.commit();
-  author = (await Author.find({
-    domainObjectField: "name",
-    value: "Tester",
-  }).exec()) as Author;
-  expect(author).toBeNull();
+  const nullAuthor = await findTestAuthor();
+  expect(nullAuthor).toBeNull();
 });
 
-test("update single table", async () => {});
+test("update single table", async () => {
+  const author = await createTestAuthor();
+  author.update<Author>({ age: 55 });
+  await DomainObject.commit();
+  const updatedAuthor = await findTestAuthor();
+  expect(updatedAuthor).toBeDefined();
+  expect(updatedAuthor.age).toEqual(55);
+});

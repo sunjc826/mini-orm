@@ -7,6 +7,3 @@ export class Author extends createDomainObject({ domainKey: AUTHOR }) {
   age: number;
   books: HasMany<Book>; // has many
 }
-
-const author = new Author({});
-author.books;

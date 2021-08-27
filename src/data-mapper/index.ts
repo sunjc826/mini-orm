@@ -113,8 +113,7 @@ export abstract class DataMapper {
   private static async getUpdateSql<T extends DomainObject>(
     domainObjects: Array<T>
   ) {
-    const domainKey = (domainObjects[0].constructor as typeof DomainObject)
-      .domainKey;
+    const domainKey = this.domainKey;
     const Table = registry.getTable(domainKey);
     const tableName = Table.tableName;
     const idArr: Array<number> = domainObjects.map((obj) => obj.id);

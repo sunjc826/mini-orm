@@ -45,10 +45,16 @@ export class DomainObject {
     return registry.unitOfWork.commit();
   }
 
-  update<T extends DomainObject>(ownKeyValues: Partial<OwnKeyValues<T>>) {
+  update<T extends DomainObject>(
+    ownKeyValues: Partial<OwnKeyValues<T>>,
+    merge: boolean = true
+  ) {
+    const dirtiedProps = Object.keys(ownKeyValues);
+    const dirtiedPropsSet = new Set(dirtiedProps);
     registry.unitOfWork.registerDirty({
       domainKey: (this.constructor as typeof DomainObject).domainKey,
-      domainObject: { ...this },
+      domainObject: { ...this, ...ownKeyValues, dirtied: dirtiedPropsSet },
+      merge,
     });
   }
 

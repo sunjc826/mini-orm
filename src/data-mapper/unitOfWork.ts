@@ -45,9 +45,23 @@ export class UnitOfWork {
     domainKey,
     domainObject,
     domainObjectId,
-  }: UnitOfWork.RegisterObjectOptions<T>) {
+    merge, // whether the changes are to be merged with the currently stored dirtyObjects
+  }: UnitOfWork.RegisterDirtyObjectOptions<T>) {
     const id = domainObjectId || domainObject.id;
-    this.dirtyObjects[domainKey][id] = domainObject;
+    if (merge && this.dirtyObjects[domainKey][id]) {
+      const storedObj = this.dirtyObjects[domainKey][id];
+      const dirtied = storedObj.dirtied;
+      for (const ele of domainObject.dirtied) {
+        dirtied.add(ele);
+      }
+      this.dirtyObjects[domainKey][id] = {
+        ...storedObj,
+        ...domainObject,
+        dirtied,
+      };
+    } else {
+      this.dirtyObjects[domainKey][id] = domainObject;
+    }
   }
 
   registerRemove<T extends DomainObject>({
@@ -165,7 +179,7 @@ export class UnitOfWork {
 
 export declare namespace UnitOfWork {
   export type RegistrationRecord = Record<string, Array<any>>;
-  export type UpdateRecord = Record<string, Record<string, any>>;
+  export type UpdateRecord = Record<string, Record<string, DomainObject>>;
   export interface RegisterNewObjectOptions<T extends DomainObject> {
     domainKey: string;
     domainObject: T;
@@ -175,6 +189,11 @@ export declare namespace UnitOfWork {
     domainKey: string;
     domainObject: T;
     domainObjectId?: number;
+  }
+
+  export interface RegisterDirtyObjectOptions<T extends DomainObject>
+    extends RegisterObjectOptions<T> {
+    merge: boolean;
   }
 }
 
