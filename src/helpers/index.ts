@@ -67,7 +67,7 @@ export function dbColumnNameToColumnKey(dbColName: string) {
   return _.camelCase(dbColName);
 }
 
-export function deepCopy(object: string) {
+export function deepCopy(object: any) {
   return JSON.parse(JSON.stringify(object));
 }
 

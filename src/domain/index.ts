@@ -12,12 +12,22 @@ import { getRepoProxy, Repo } from "../repository";
 // the same methods on different prototypes
 export class DomainObject {
   static domainKey: string;
+  dirtied: Set<string> = new Set<string>();
   id: number;
 
   constructor(obj: Record<string, any>) {
     for (const [key, value] of Object.entries(obj)) {
       (this as any)[key] = value;
     }
+    // return new Proxy(this, {
+    //   set(target, prop, value, _receiver) {
+    //     if (Reflect.has(target, prop)) {
+    //       target.update({ [prop]: value });
+    //       return true;
+    //     }
+    //     return false;
+    //   },
+    // });
   }
 
   static create<T extends DomainObject>(
@@ -33,6 +43,13 @@ export class DomainObject {
 
   static async commit() {
     return registry.unitOfWork.commit();
+  }
+
+  update<T extends DomainObject>(ownKeyValues: Partial<OwnKeyValues<T>>) {
+    registry.unitOfWork.registerDirty({
+      domainKey: (this.constructor as typeof DomainObject).domainKey,
+      domainObject: { ...this },
+    });
   }
 
   destroy() {

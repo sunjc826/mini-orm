@@ -28,6 +28,7 @@ afterAll(async () => {
 
 afterEach(async () => {
   await DataMapper.truncateTables();
+  registry.unitOfWork.resetIdentityMap();
 });
 
 interface CanCreateTableResult {
@@ -111,7 +112,6 @@ test("delete from single table", async () => {
   }).exec()) as Author;
   expect(author).toBeDefined();
   expect(author.name).toEqual("Tester");
-
   author.destroy();
   await DomainObject.commit();
   author = (await Author.find({
@@ -120,3 +120,5 @@ test("delete from single table", async () => {
   }).exec()) as Author;
   expect(author).toBeNull();
 });
+
+test("update single table", async () => {});

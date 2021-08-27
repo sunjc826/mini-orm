@@ -83,6 +83,17 @@ export abstract class DataMapper {
     return idArr;
   }
 
+  static async update<T extends DomainObject>(
+    objects: Array<T>,
+    client?: PoolClient
+  ) {
+    if (objects.length === 0) {
+      return;
+    }
+    const sql = await this.getUpdateSql(objects);
+    await (client || (await this.dbPool)).query(sql);
+  }
+
   /**
    * Deletes the rows corresponding to the provided objectIds.
    * @param objectIds
@@ -93,8 +104,73 @@ export abstract class DataMapper {
     if (objectIds.length === 0) {
       return;
     }
-    const sql = await this.getDeleteSql(objectIds);
+    const sql = this.getDeleteSql(objectIds);
     await (client || (await this.dbPool)).query(sql);
+  }
+
+  // Note: update may be very slow since each updated record creates
+  // a single UPDATE SET statement
+  private static async getUpdateSql<T extends DomainObject>(
+    domainObjects: Array<T>
+  ) {
+    const domainKey = (domainObjects[0].constructor as typeof DomainObject)
+      .domainKey;
+    const Table = registry.getTable(domainKey);
+    const tableName = Table.tableName;
+    const idArr: Array<number> = domainObjects.map((obj) => obj.id);
+    const sqlSetPartArr: Array<Array<any>> = new Array(domainObjects.length);
+    for (let i = 0; i < domainObjects.length; i++) {
+      sqlSetPartArr[i] = [];
+    }
+
+    outer: for (const metadataField of this.metadata.metadataFields) {
+      // foreach doesn't work well with async logic that I want to run sequentially
+      for (let i = 0; i < domainObjects.length; i++) {
+        const domainObj = domainObjects[i] as Record<string, any>;
+        switch (metadataField.variant) {
+          case MetaDataObjectType.COLUMN_MAP: {
+            const { domainFieldName, tableColumnKey } = metadataField;
+            if (tableColumnKey === ID_COLUMN_NAME) {
+              continue outer;
+            }
+            if (!domainObjects[i].dirtied.has(domainFieldName)) {
+              continue;
+            }
+            const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+            sqlSetPartArr[i].push(`${actualDbColumnName}=
+              ${Table.convertColumnValueToSqlString(
+                tableColumnKey,
+                domainObj[domainFieldName]
+              )}`);
+            break;
+          }
+          case MetaDataObjectType.FOREIGN_KEY_MAP: {
+            const { foreignKey, relationName, relationType } = metadataField;
+            if (relationType === RelationType.BELONGS_TO) {
+              if (!domainObjects[i].dirtied.has(relationName)) {
+                continue;
+              }
+              const actualDbColumnName = Table.getDbColumnName(foreignKey);
+
+              // the reason why we use await here is that the object
+              // may be a virtual proxy (for which await is needed) or a regular object.
+              sqlSetPartArr[i].push(`${actualDbColumnName}=
+                ${await (domainObj[relationName] as Promisify<DomainObject>).id}
+              `);
+            }
+            break;
+          }
+          default: {
+            throw new Error("unexpected metadata object type");
+          }
+        }
+      }
+    }
+    let sql = "";
+    for (let i = 0; i < idArr.length; i++) {
+      sql += `UPDATE ${tableName} SET ${sqlSetPartArr[i]} WHERE id=${idArr[i]};`;
+    }
+    return sql;
   }
 
   private static getDeleteSql(objectIds: Array<number>): string {
@@ -139,7 +215,7 @@ export abstract class DataMapper {
         }
       }
     }
-    tag: for (const metadataField of this.metadata.metadataFields) {
+    outer: for (const metadataField of this.metadata.metadataFields) {
       // foreach doesn't work well with async logic that I want to run sequentially
       for (let i = 0; i < domainObjects.length; i++) {
         const domainObj = domainObjects[i] as Record<string, any>;
@@ -147,7 +223,7 @@ export abstract class DataMapper {
           case MetaDataObjectType.COLUMN_MAP: {
             const { domainFieldName, tableColumnKey } = metadataField;
             if (tableColumnKey === ID_COLUMN_NAME) {
-              continue tag;
+              continue outer;
             }
 
             sqlValuesPartArr[i].push(

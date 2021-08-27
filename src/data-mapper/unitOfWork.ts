@@ -12,11 +12,11 @@ export class UnitOfWork {
   /**
    * Objects in a modified state, not updated in db.
    */
-  dirtyObjects: UnitOfWork.RegistrationRecord = {};
+  dirtyObjects: UnitOfWork.UpdateRecord = {};
   /**
    * Objects to delete, not removed in db.
    */
-  removedObjects: UnitOfWork.RegistrationRecord = {};
+  toDeleteObjectIds: UnitOfWork.RegistrationRecord = {};
   constructor() {
     this.identityMap = new IdentityMap();
   }
@@ -24,14 +24,14 @@ export class UnitOfWork {
   register(domainKey: string) {
     this.identityMap.register(domainKey);
     this.newObjects[domainKey] = [];
-    this.dirtyObjects[domainKey] = [];
-    this.removedObjects[domainKey] = [];
+    this.dirtyObjects[domainKey] = {};
+    this.toDeleteObjectIds[domainKey] = [];
   }
 
   registerClean<T extends DomainObject>(
     options: UnitOfWork.RegisterObjectOptions<T>
   ) {
-    this.identityMap.insert(options);
+    this.identityMap.insertOrUpdate(options);
   }
 
   registerNew<T extends DomainObject>({
@@ -41,13 +41,13 @@ export class UnitOfWork {
     this.newObjects[domainKey].push(domainObject);
   }
 
-  // TODO: can consider using domainObjectId to index each object instead
   registerDirty<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
   }: UnitOfWork.RegisterObjectOptions<T>) {
-    this.dirtyObjects[domainKey].push(domainObject);
+    const id = domainObjectId || domainObject.id;
+    this.dirtyObjects[domainKey][id] = domainObject;
   }
 
   registerRemove<T extends DomainObject>({
@@ -55,20 +55,30 @@ export class UnitOfWork {
     domainObject,
     domainObjectId,
   }: UnitOfWork.RegisterObjectOptions<T>) {
-    this.removedObjects[domainKey].push(
+    this.toDeleteObjectIds[domainKey].push(
       domainObject ? domainObject.id : domainObjectId
     );
   }
 
   /**
+   * Clears in memory cache of objects.
+   */
+  resetIdentityMap() {
+    this.identityMap.reset();
+  }
+
+  /**
    * Clears all newly created, updated, or removed objects before changes are persisted to db.
    */
-  reset() {
-    [this.newObjects, this.dirtyObjects, this.removedObjects].forEach((ele) => {
+  resetUncommitted() {
+    [this.newObjects, this.toDeleteObjectIds].forEach((ele) => {
       for (const key of Object.keys(ele)) {
         ele[key] = [];
       }
     });
+    for (const key of Object.keys(this.dirtyObjects)) {
+      this.dirtyObjects[key] = {};
+    }
   }
 
   private async insertNew(client: PoolClient) {
@@ -83,15 +93,21 @@ export class UnitOfWork {
     }
   }
 
-  // TODO
-  private async updateDirty(client: PoolClient) {}
+  private async updateDirty(client: PoolClient) {
+    for (const domainKey of Object.keys(this.dirtyObjects)) {
+      await registry
+        .getMapper(domainKey)
+        .update(Object.values(this.dirtyObjects[domainKey])),
+        client;
+    }
+  }
 
   private async deleteRemoved(client: PoolClient) {
     const sorted = registry.getCorrectDeleteOrder();
     for (const domainKey of sorted) {
       await registry
         .getMapper(domainKey)
-        .delete(this.removedObjects[domainKey], client);
+        .delete(this.toDeleteObjectIds[domainKey], client);
     }
   }
 
@@ -102,19 +118,27 @@ export class UnitOfWork {
     // update new objects
     for (const [domainKey, objArr] of Object.entries(this.newObjects)) {
       for (const obj of objArr) {
-        this.identityMap.insert({
+        this.identityMap.insertOrUpdate({
           domainKey,
           domainObject: obj,
         });
       }
     }
 
-    for (const [domainKey, objArr] of Object.entries(this.dirtyObjects)) {
-      for (const obj of objArr) {
-        this.identityMap.insert({
+    for (const [domainKey, objMap] of Object.entries(this.dirtyObjects)) {
+      for (const obj of Object.values(objMap)) {
+        this.identityMap.insertOrUpdate({
           domainKey,
           domainObject: obj,
         });
+      }
+    }
+
+    for (const [domainKey, objIdArr] of Object.entries(
+      this.toDeleteObjectIds
+    )) {
+      for (const id of objIdArr) {
+        this.identityMap.delete(domainKey, id);
       }
     }
   }
@@ -134,14 +158,14 @@ export class UnitOfWork {
     await this.deleteRemoved(client);
     this.updateIdentityMap();
     await client.query("COMMIT;");
-    this.reset();
+    this.resetUncommitted();
     return client.release();
   }
 }
 
 export declare namespace UnitOfWork {
   export type RegistrationRecord = Record<string, Array<any>>;
-
+  export type UpdateRecord = Record<string, Record<string, any>>;
   export interface RegisterNewObjectOptions<T extends DomainObject> {
     domainKey: string;
     domainObject: T;
@@ -161,6 +185,12 @@ class IdentityMap {
     this.map[domainKey] = [];
   }
 
+  reset() {
+    for (const key of Object.keys(this.map)) {
+      this.map[key] = [];
+    }
+  }
+
   find(domainKey: string, id: number) {
     if (!this.map[domainKey]) {
       throw new Error("domainKey not registered");
@@ -168,12 +198,16 @@ class IdentityMap {
     return this.map[domainKey][id];
   }
 
-  insert<T extends DomainObject>({
+  insertOrUpdate<T extends DomainObject>({
     domainKey,
     domainObject,
     domainObjectId,
   }: UnitOfWork.RegisterObjectOptions<T>) {
     const id = domainObjectId || domainObject.id;
     this.map[domainKey][id] = domainObject;
+  }
+
+  delete<T extends DomainObject>(domainKey: string, domainObjectId: number) {
+    this.map[domainKey][domainObjectId] = null;
   }
 }
