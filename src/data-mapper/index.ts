@@ -396,6 +396,10 @@ interface CreateMapperOptions<T extends typeof Table> {
   domainKey: string;
   Table?: T;
   /**
+   * A mapping of tableColumnName to domainFieldName
+   */
+  columnMap?: Record<string, string>;
+  /**
    * A mapping of relationName to options
    */
   belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
@@ -409,13 +413,18 @@ export function createMapper<T extends typeof Table>({
   belongsTo = {},
   hasOne = {},
   hasMany = {},
+  columnMap = {},
 }: CreateMapperOptions<T>) {
   // Table takes priority
   const TableClass = Table || registry.getTable(domainKey!);
   const Mapper = class extends DataMapper {
     static domainKey = domainKey;
   };
-  Mapper.metadata = MetaData.generateDefaultMetaData(domainKey, TableClass);
+  Mapper.metadata = MetaData.generateDefaultMetaData({
+    domainKey,
+    Table: TableClass,
+    customColumnMap: columnMap,
+  });
   // TODO: quite a lot of repetition here
   for (const [key, options] of Object.entries(belongsTo)) {
     Mapper.metadata.belongsTo({ relationName: key, ...options });

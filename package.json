@@ -6,7 +6,10 @@
   "scripts": {
     "start": "ts-node ./src/index.ts",
     "dev": "ts-node-transpile-only ./src/index.ts",
-    "test": "jest --verbose=true"
+    "test": "jest --verbose=true",
+    "test-join": "jest --verbose=true --testNamePattern=join",
+    "test-single": "jest --verbose=true --testNamePattern=single",
+    "test-multi": "jest --verbose=true --testNamePattern=multi"
   },
   "repository": {
     "type": "git",

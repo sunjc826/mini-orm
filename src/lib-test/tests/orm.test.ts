@@ -131,3 +131,8 @@ test("update single table", async () => {
   expect(updatedAuthor).toBeDefined();
   expect(updatedAuthor.age).toEqual(55);
 });
+
+
+test("joining tables manually", async() => {
+  
+})

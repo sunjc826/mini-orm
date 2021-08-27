@@ -12,10 +12,11 @@ export class MetaData {
   domainKey: string;
   metadataFields: Array<AllMetadataFieldTypes> = [];
 
-  static generateDefaultMetaData<T extends typeof Table>(
-    domainKey: string,
-    Table: T
-  ): MetaData {
+  static generateDefaultMetaData<T extends typeof Table>({
+    domainKey,
+    Table,
+    customColumnMap,
+  }: MetaData.GenerateDefaultMetaDataOptions<T>): MetaData {
     const metadata = new MetaData();
     metadata.domainKey = domainKey;
     for (const [columnName, _columnAttributes] of Object.entries(
@@ -23,11 +24,26 @@ export class MetaData {
     )) {
       // ignore foreign keys when generating metadata
       // relationships are added manually at the metadata level
-      if (!Table.isForeignKey(columnName)) {
-        metadata.metadataFields.push(ColumnMap.usingColumn(columnName));
+      if (Table.isForeignKey(columnName)) {
+        continue;
       }
+
+      // don't generate default column map is table column has its customized map
+      if (columnName in customColumnMap) {
+        continue;
+      }
+
+      metadata.metadataFields.push(ColumnMap.usingColumn(columnName));
     }
     metadata.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
+
+    for (const [tableColumnKey, domainFieldName] of Object.entries(
+      customColumnMap
+    )) {
+      metadata.metadataFields.push(
+        new ColumnMap({ tableColumnKey, domainFieldName })
+      );
+    }
 
     return metadata;
   }
@@ -80,6 +96,10 @@ export class MetaData {
     );
   }
 
+  addColumnMap(options: ColumnMap.ConstructorOptions) {
+    this.metadataFields.push(new ColumnMap(options));
+  }
+
   findByDomain(domainObjectField: string): AllMetadataFieldTypes | null {
     return (
       this.metadataFields.find((field) =>
@@ -97,6 +117,15 @@ export class MetaData {
 }
 
 export declare namespace MetaData {
+  export interface GenerateDefaultMetaDataOptions<T extends typeof Table> {
+    domainKey: string;
+    Table: T;
+    /**
+     * A mapping of tableColumnName to domainFieldName
+     */
+    customColumnMap: Record<string, string>;
+  }
+
   export interface RelationOptionsWithoutName {
     foreignKey?: string; // tableColumnKey acting as the foreignKey
     otherDomainKey?: string;
@@ -125,7 +154,10 @@ export class ColumnMap extends AllMetadataField {
   tableColumnKey: string;
   domainFieldName: string;
 
-  constructor(tableColumnKey: string, domainFieldName: string) {
+  constructor({
+    tableColumnKey,
+    domainFieldName,
+  }: ColumnMap.ConstructorOptions) {
     super();
     this.tableColumnKey = tableColumnKey;
     this.domainFieldName = domainFieldName;
@@ -139,7 +171,7 @@ export class ColumnMap extends AllMetadataField {
   static usingDomainField(domainFieldName: string) {
     // there is no need to snakecase here since tableColumnKey isn't the actual db column name.
     // const tableColumnName = _.snakeCase(domainFieldName);
-    return new ColumnMap(domainFieldName, domainFieldName);
+    return new ColumnMap({ tableColumnKey: domainFieldName, domainFieldName });
   }
 
   /**
@@ -148,7 +180,7 @@ export class ColumnMap extends AllMetadataField {
    * @returns ColumnMap.
    */
   static usingColumn(tableColumnKey: string) {
-    return new ColumnMap(tableColumnKey, tableColumnKey);
+    return new ColumnMap({ tableColumnKey, domainFieldName: tableColumnKey });
   }
 
   matchByDomain(domainObjectField: string): boolean {
@@ -157,6 +189,13 @@ export class ColumnMap extends AllMetadataField {
 
   matchByTable(tableColumnKey: string): boolean {
     return this.tableColumnKey === tableColumnKey;
+  }
+}
+
+export declare namespace ColumnMap {
+  export interface ConstructorOptions {
+    tableColumnKey: string;
+    domainFieldName: string;
   }
 }
 
