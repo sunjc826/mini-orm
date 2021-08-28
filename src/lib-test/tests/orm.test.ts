@@ -10,6 +10,10 @@ import { Author } from "../models/author";
 import { PublisherTest } from "../tables/publisher";
 import { registry } from "../../registry";
 import { DomainObject } from "../../domain";
+import { Book } from "../models/book";
+import { Person } from "../models/person";
+import { AUTHOR, BOOK, PERSON, PUBLISHER } from "../domainKeys";
+import { Publisher } from "../models/publisher";
 
 let pool: DbPool;
 beforeAll(async () => {
@@ -90,22 +94,58 @@ test("topological sort", async () => {
 });
 
 async function createTestAuthor() {
-  Author.create<Author>({ name: "Tester", age: 30 });
+  Author.create<Author>({ name: "TestAuthor", age: 30 });
   await DomainObject.commit();
   const author = (await Author.find({
     domainObjectField: "name",
-    value: "Tester",
+    value: "TestAuthor",
   }).exec()) as Author;
   expect(author).toBeDefined();
-  expect(author.name).toEqual("Tester");
+  expect(author.name).toEqual("TestAuthor");
   return author;
 }
 
 async function findTestAuthor() {
   return (await Author.find({
     domainObjectField: "name",
-    value: "Tester",
+    value: "TestAuthor",
   }).exec()) as Author;
+}
+
+async function createTestPerson() {
+  Person.create<Person>({ name: "TestPerson", age: 30, favoriteFood: "salad" });
+  await DomainObject.commit();
+  const person = (await Person.find({
+    domainObjectField: "name",
+    value: "TestPerson",
+  }).exec()) as Author;
+  expect(person).toBeDefined();
+  expect(person.name).toEqual("TestPerson");
+  return person;
+}
+
+async function createTestBook(author: Author) {
+  Book.create<Book>({ name: "TestBook", genre: "TestGenre", author });
+  await DomainObject.commit();
+  const book = (await Book.find({
+    domainObjectField: "name",
+    value: "TestBook",
+  }).exec()) as Book;
+  expect(book).toBeDefined();
+  expect(book.name).toEqual("TestBook");
+  return book;
+}
+
+async function createTestPublisher(book: Book) {
+  Publisher.create<Publisher>({ book, region: "TestRegion" });
+  await DomainObject.commit();
+  const publisher = (await Publisher.find({
+    domainObjectField: "region",
+    value: "TestRegion",
+  }).exec()) as Publisher;
+  expect(publisher).toBeDefined();
+  expect(publisher.region).toEqual("TestRegion");
+  return publisher;
 }
 
 /**
@@ -132,7 +172,48 @@ test("update single table", async () => {
   expect(updatedAuthor.age).toEqual(55);
 });
 
+test("joining tables manually", async () => {
+  const author = await createTestAuthor();
+  await createTestBook(author);
+  const findAuthorViaJoiningBook = (await Author.joins(BOOK)
+    .find({ domainObject: BOOK, domainObjectField: "name", value: "TestBook" })
+    .exec()) as Author;
+  expect(findAuthorViaJoiningBook).toBeDefined();
+  expect(findAuthorViaJoiningBook.name).toEqual("TestAuthor");
 
-test("joining tables manually", async() => {
-  
-})
+  const findBookViaJoiningAuthor = (await Book.joins(AUTHOR)
+    .find({
+      domainObject: AUTHOR,
+      domainObjectField: "name",
+      value: "TestAuthor",
+    })
+    .exec()) as Book;
+  expect(findBookViaJoiningAuthor).toBeDefined();
+  expect(findBookViaJoiningAuthor.name).toEqual("TestBook");
+});
+
+test("multiple joins", async () => {
+  const author = await createTestAuthor();
+  const book = await createTestBook(author);
+  await createTestPublisher(book);
+
+  const findPublisher = (await Publisher.joins({ [BOOK]: AUTHOR })
+    .find({
+      domainObject: AUTHOR,
+      domainObjectField: "name",
+      value: "TestAuthor",
+    })
+    .exec()) as Publisher;
+  expect(findPublisher).toBeDefined();
+  expect(findPublisher.region).toEqual("TestRegion");
+
+  const findAuthor = (await Author.joins({ [BOOK]: PUBLISHER })
+    .find({
+      domainObject: PUBLISHER,
+      domainObjectField: "region",
+      value: "TestRegion",
+    })
+    .exec()) as Author;
+  expect(findAuthor).toBeDefined();
+  expect(findAuthor.name).toEqual("TestAuthor");
+});

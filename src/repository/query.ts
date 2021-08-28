@@ -3,7 +3,7 @@ import { DataMapper } from "../data-mapper";
 import { ColumnMap, MetaDataObjectType } from "../data-mapper/metadata";
 import { Table } from "../data-mapper/table";
 import { formatDbColumn } from "../helpers";
-import { write } from "../lib-test/tests/helpers";
+import { log, write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { EMPTY, Operators } from "./types";
 
@@ -34,15 +34,17 @@ export class Query {
   where(criterion: CriterionObject) {
     criterion.domainObject ||= this.base;
     criterion.sqlOperator ||= Operators.EQ;
+    this.criteria[criterion.domainObject] ||= [];
     this.criteria[criterion.domainObject].push(new Criterion(criterion));
   }
 
   /**
-   * Joins base table with other tables
-   * @param domainKeys Domain
+   * Joins base table with other tables.
+   * @param domainKeys Domain key.
    */
   joins(domainKeys: JoinObject) {
     this.joinDomains.merge(domainKeys);
+    // log(this.joinDomains);
   }
 
   limit(count: number) {
@@ -125,7 +127,7 @@ type ProcessedJoinObject =
 // where
 class Criterion {
   private sqlOperator: string;
-  private domainObject: string;
+  private domainObject: string; // this field is unused
   private domainObjectField: string;
   private value: any;
 
@@ -199,9 +201,9 @@ class Join {
       if (!this.domainKeys.has(domains)) {
         this.domainKeys.add(domains);
       }
-      return { [domains]: EMPTY };
+      return [{ [domains]: EMPTY }];
     } else if (Array.isArray(domains)) {
-      return domains.map((ele) => {
+      return domains.flatMap((ele) => {
         if (Array.isArray(ele)) {
           throw new Error("invalid object");
         }
@@ -210,10 +212,11 @@ class Join {
     } else {
       // table is an object
       const processed: ProcessedJoinObject = {};
-      for (const [tableName, value] of Object.entries(domains)) {
-        processed[tableName] = this.processDomains(value);
+      for (const [domainKey, value] of Object.entries(domains)) {
+        this.domainKeys.add(domainKey);
+        processed[domainKey] = this.processDomains(value);
       }
-      return processed;
+      return [processed];
     }
   }
 
@@ -248,7 +251,9 @@ class Join {
     rootDomainKey: string,
     joinDomains: ProcessedJoinObject | EMPTY
   ): string {
-    if (joinDomains === EMPTY) {
+    // We cannot check for === here since operations like merge are highly likely to modify
+    // underlying EMPTY object. An alternative would be to write our own implementation of functions like merge.
+    if (_.isEqual(joinDomains, EMPTY)) {
       return "";
     } else if (Array.isArray(joinDomains)) {
       return joinDomains
@@ -259,7 +264,6 @@ class Join {
       const Table = registry.getTable(rootDomainKey);
       const otherDomainKey = Join.firstKey(joinDomains);
       const OtherTable = registry.getTable(otherDomainKey);
-
       const sqlArr = [];
       if (Table.belongsTo(otherDomainKey)) {
         const reference = Table.getReference(otherDomainKey);
@@ -267,33 +271,37 @@ class Join {
           sqlArr.push(
             `${formatDbColumn(
               Table.tableName,
-              reference.ownTableForeignKeys[i]
+              Table.getDbColumnName(reference.ownTableForeignKeys[i])
             )} = ${formatDbColumn(
               OtherTable.tableName,
-              reference.otherTableCandidateKeys[i]
+              OtherTable.getDbColumnName(reference.otherTableCandidateKeys[i])
             )}`
           );
         }
       } else if (OtherTable.belongsTo(rootDomainKey)) {
         const reference = OtherTable.getReference(rootDomainKey);
-        const sqlArr = [];
         for (let i = 0; i < reference.ownTableForeignKeys.length; i++) {
           sqlArr.push(
             `${formatDbColumn(
               OtherTable.tableName,
-              reference.ownTableForeignKeys[i]
+              OtherTable.getDbColumnName(reference.ownTableForeignKeys[i])
             )} = ${formatDbColumn(
               Table.tableName,
-              reference.otherTableCandidateKeys[i]
+              Table.getDbColumnName(reference.otherTableCandidateKeys[i])
             )}`
           );
         }
       } else {
         throw new Error("no relation found.");
       }
+      const others = this.toSqlJoinHelper(
+        otherDomainKey,
+        (joinDomains as any)[otherDomainKey]
+      );
       const sql = `INNER JOIN ${OtherTable.tableName} ON ${sqlArr.join(
         " AND "
-      )}`;
+      )} ${others}`;
+
       return sql;
     }
   }

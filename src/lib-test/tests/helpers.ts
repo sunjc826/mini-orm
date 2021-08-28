@@ -1,4 +1,5 @@
 import path from "path";
+import util from "util";
 import { appendFileSync, readdirSync, unlinkSync } from "fs";
 import { quote } from "../../helpers";
 const logFileDir = path.resolve(__dirname, "../", "logs/");
@@ -23,6 +24,10 @@ export function write(writeData: any, fileType: string = "txt") {
     data = JSON.stringify(writeData) + "\n";
   }
   return appendFileSync(`${logFilePath}.${fileType}`, data);
+}
+
+export function log(...data: any) {
+  console.log(util.inspect(data, { showHidden: false, depth: null }));
 }
 
 // https://stackoverflow.com/questions/14917757/delete-unlink-files-matching-a-regex/41571712
