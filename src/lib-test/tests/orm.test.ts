@@ -194,8 +194,8 @@ test("joining tables manually", async () => {
 
 test("multiple joins", async () => {
   const author = await createTestAuthor();
-  const book = await createTestBook(author);
-  await createTestPublisher(book);
+  await createTestBook(author);
+  await createTestPublisher(await author.books[0]);
 
   const findPublisher = (await Publisher.joins({ [BOOK]: AUTHOR })
     .find({
@@ -216,4 +216,17 @@ test("multiple joins", async () => {
     .exec()) as Author;
   expect(findAuthor).toBeDefined();
   expect(findAuthor.name).toEqual("TestAuthor");
+});
+
+test("update proxied object", async () => {
+  const author = await createTestAuthor();
+  await createTestBook(author);
+  await createTestPublisher(await author.books[0]);
+
+  (await (await author.books[0]).publisher.update)<Publisher>({
+    region: "UpdatedTestRegion",
+  });
+  await DomainObject.commit();
+  const updatedRegion = await (await author.books[0]).publisher.region;
+  expect(updatedRegion).toEqual("UpdatedTestRegion");
 });

@@ -6,7 +6,7 @@ import { Query } from "../repository/query";
 
 export class ValueHolder<T extends DomainObject> {
   value: T | Array<T> | null;
-  isLoaded: boolean = false;
+  // isLoaded: boolean = false;
   domainKey: string;
   id?: number;
   loader?: Query;
@@ -49,7 +49,7 @@ export class ValueHolder<T extends DomainObject> {
         "at least one of knownId, loader required to load an object"
       );
     }
-    this.isLoaded = true;
+    // this.isLoaded = true;
   }
 
   /**
@@ -58,11 +58,11 @@ export class ValueHolder<T extends DomainObject> {
    * @returns
    */
   async getProp(prop: string) {
-    if (!this.isLoaded) {
-      await this.loadValue();
-    }
-
-    return (this.value! as any)[prop];
+    // always load value, at least from identity map, such that it is up to date
+    // in some sense this is no longer lazy loading
+    await this.loadValue();
+    const value = (this.value! as any)[prop];
+    return typeof value === "function" ? value.bind(this.value) : value;
   }
 }
 

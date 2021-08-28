@@ -5,5 +5,5 @@ import { Book } from "./book";
 export class Author extends createDomainObject({ domainKey: AUTHOR }) {
   name: string;
   age: number;
-  books: HasMany<Book>; // has many
+  books: HasMany<Book>;
 }
