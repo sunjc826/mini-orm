@@ -1,10 +1,9 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
-import { ColumnMap, MetaDataObjectType } from "../data-mapper/metadata";
-import { Table } from "../data-mapper/table";
+import { MetaDataObjectType } from "../data-mapper";
+import { Table } from "../data-mapper";
 import { DomainObject } from "../domain";
 import { formatDbColumn } from "../helpers";
-import { log, write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { EMPTY, Operators } from "./types";
 

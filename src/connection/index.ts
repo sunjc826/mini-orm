@@ -13,3 +13,5 @@ export async function getPool() {
   const dbConfig: ClientConfig = JSON.parse(configFile);
   return new DbPool(dbConfig);
 }
+
+export { DbPool, ResultSet } from "./connect";

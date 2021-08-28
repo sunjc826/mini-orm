@@ -2,7 +2,7 @@ import { DomainObject } from "../domain";
 import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
 import { getRepoProxy } from "../repository";
-import { Query } from "../repository/query";
+import { Query } from "../repository";
 
 export class ValueHolder<T extends DomainObject> {
   value: T | Array<T> | null;

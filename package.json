@@ -1,6 +1,6 @@
 {
   "name": "mini-orm",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Test implementation of various enterprise application patterns",
   "main": "./src/index.ts",
   "scripts": {
@@ -13,7 +13,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sunjc826/mini-orm.git"
+    "url": "git+https://github.com/sunjc826/mini-orm.git#main"
+  },
+  "engines": {
+    "node": "v14.17.5"
   },
   "author": "sunjc826",
   "license": "ISC",

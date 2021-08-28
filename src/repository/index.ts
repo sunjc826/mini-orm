@@ -43,3 +43,6 @@ export function getRepoProxy(
 ): Repo {
   return createRepoProxy(new Repository(new Strategy()));
 }
+
+export * from "./query";
+export * from "./types";

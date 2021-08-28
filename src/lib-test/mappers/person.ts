@@ -1,5 +1,4 @@
 import { createMapper } from "../../data-mapper";
-import { ColumnMap } from "../../data-mapper/metadata";
 import { PERSON } from "../domainKeys";
 import { PersonTable } from "../tables/person";
 
