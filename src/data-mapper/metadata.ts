@@ -300,4 +300,29 @@ export declare namespace ForeignKeyMap {
   }
 }
 
+export class JoinTableMap extends AllMetadataField {
+  variant: MetaDataObjectType;
+  domainKeyPair: [string, string];
+  joinTable: typeof Table;
+  constructor({ domainKeyPair, joinTable }: JoinTableMap.ConstructorOptions) {
+    super();
+    this.domainKeyPair = domainKeyPair;
+    this.joinTable = joinTable;
+  }
+
+  matchByDomain(domainObjectField: string): boolean {
+    return false;
+  }
+  matchByTable(tableColumnKey: string): boolean {
+    return false;
+  }
+}
+
+export declare namespace JoinTableMap {
+  export interface ConstructorOptions {
+    domainKeyPair: [string, string];
+    joinTable: typeof Table;
+  }
+}
+
 export type AllMetadataFieldTypes = ColumnMap | ForeignKeyMap;

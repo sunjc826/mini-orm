@@ -118,11 +118,31 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @returns An array of domain objects or a single domain object.
    */
   async exec<T extends DomainObject>(): Promise<Array<T> | T | null> {
-    const base = this.currentQuery!.base;
+    if (!this.currentQuery) {
+      throw new Error("no query defined");
+    }
+    const query = this.currentQuery;
+    const base = query.base;
     const BaseMapper = registry.getMapper(base);
+
+    // for single results that don't have cross table conditions,
+    // check identity map if object exists first,
+    // otherwise, make a db query
+    if (this.isSingle && query.isSimple()) {
+      const inMemoryResult = registry
+        .getIdentityMap()
+        .getCachedObjectsByDomain(base)
+        .filter((obj) => !!obj) // removed undefined or null objects
+        .find((obj) => query.matchObject(obj));
+      if (inMemoryResult) {
+        return inMemoryResult;
+      }
+    }
+
     let domainObjects = await BaseMapper.select<T>(
       this.currentQuery!.toQueryString()
     );
+
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
 
     return queryResult || null;

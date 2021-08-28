@@ -84,7 +84,6 @@ test("foreign key mapping", async () => {
   expect(await whyImSoGreatBook.author.name).toEqual(dukeNukem?.name);
   // has one
   const publisher = whyImSoGreatBook.publisher;
-  console.log(publisher);
   expect(await publisher.region).toEqual("International");
 });
 

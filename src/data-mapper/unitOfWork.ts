@@ -217,6 +217,10 @@ class IdentityMap {
     return this.map[domainKey][id];
   }
 
+  getCachedObjectsByDomain(domainKey: string) {
+    return this.map[domainKey];
+  }
+
   insertOrUpdate<T extends DomainObject>({
     domainKey,
     domainObject,

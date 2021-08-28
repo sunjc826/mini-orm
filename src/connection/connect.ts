@@ -20,7 +20,7 @@ export class DbPool {
   async getClient(): Promise<PoolClient | null> {
     try {
       const client = await this.pool.connect();
-      console.log("connection success");
+      // console.log("connection success");
       return client;
     } catch (err) {
       console.log("connection error", err);
@@ -36,7 +36,6 @@ export class DbPool {
 
   async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
     write(queryText, "sql");
-    // console.log({ sql: queryText, values });
     const result = await this.pool.query(queryText, values);
     return result.rows;
   }

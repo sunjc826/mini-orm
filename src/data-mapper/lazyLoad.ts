@@ -1,5 +1,5 @@
 import { DomainObject } from "../domain";
-import { MethodProxy, Promisify } from "../helpers/types";
+import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
 import { getRepoProxy } from "../repository";
 import { Query } from "../repository/query";
@@ -60,6 +60,7 @@ export class ValueHolder<T extends DomainObject> {
   async getProp(prop: string) {
     // always load value, at least from identity map, such that it is up to date
     // in some sense this is no longer lazy loading
+    // TODO: Is there a way to use actual lazy loading?
     await this.loadValue();
     const value = (this.value! as any)[prop];
     return typeof value === "function" ? value.bind(this.value) : value;
@@ -83,20 +84,18 @@ export declare namespace ValueHolder {
  * @returns Virtual proxy.
  */
 export function createVirtualProxy<T extends DomainObject>(
-  valueHolder: ValueHolder<T>,
-  permit = ["id"]
+  valueHolder: ValueHolder<T>
 ): Promisify<T> {
   const handler = {
     async get(target: ValueHolder<T>, prop: string) {
       return target.getProp(prop);
     },
-    set(target: ValueHolder<T>, prop: string, value: any) {
-      // TODO: allow update of fields
-      if (!(prop in permit.values())) {
-        return false;
-      }
-      Reflect.set(target, prop, value);
-      return true;
+    /**
+     * All setting of properties is to be done via DomainObject#update method.
+     * @returns false.
+     */
+    set() {
+      return false;
     },
   };
 

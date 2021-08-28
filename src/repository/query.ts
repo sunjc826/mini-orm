@@ -2,6 +2,7 @@ import _ from "lodash";
 import { DataMapper } from "../data-mapper";
 import { ColumnMap, MetaDataObjectType } from "../data-mapper/metadata";
 import { Table } from "../data-mapper/table";
+import { DomainObject } from "../domain";
 import { formatDbColumn } from "../helpers";
 import { log, write } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
@@ -36,6 +37,27 @@ export class Query {
     criterion.sqlOperator ||= Operators.EQ;
     this.criteria[criterion.domainObject] ||= [];
     this.criteria[criterion.domainObject].push(new Criterion(criterion));
+  }
+
+  /**
+   * Returns if the current query is a simple one, that is, no cross table conditions are imposed.
+   * @returns
+   */
+  isSimple() {
+    return this.joinDomains.isEmpty();
+  }
+
+  /**
+   * Returns if the domain object passes all of the queries conditions.
+   * @param domainObject
+   */
+  matchObject<T extends DomainObject>(
+    domainObject: T,
+    domainKey: string = this.base
+  ): boolean {
+    return this.criteria[domainKey].every((criterion) =>
+      criterion.matchObject(domainObject)
+    );
   }
 
   /**
@@ -147,6 +169,40 @@ class Criterion {
   }
 
   /**
+   * Returns if domain object matches this criterion.
+   * @param domainObject
+   */
+  matchObject<T extends DomainObject>(domainObject: T): boolean {
+    const obj = domainObject as any;
+    switch (this.sqlOperator) {
+      case Operators.EQ: {
+        return obj[this.domainObjectField] === this.value;
+      }
+      case Operators.GEQ: {
+        return obj[this.domainObjectField] >= this.value;
+      }
+      case Operators.GT: {
+        return obj[this.domainObjectField] > this.value;
+      }
+      case Operators.IN: {
+        return obj[this.domainObjectField] in this.value;
+      }
+      case Operators.LEQ: {
+        return obj[this.domainObjectField] <= this.value;
+      }
+      case Operators.LT: {
+        return obj[this.domainObjectField] < this.value;
+      }
+      case Operators.NEQ: {
+        return obj[this.domainObjectField] != this.value;
+      }
+      default: {
+        throw new Error("unrecognised operator");
+      }
+    }
+  }
+
+  /**
    * Returns a single where clause corresponding to a criterion. Note that logical chaining
    * is done elsewhere.
    * @returns Sql where clause
@@ -193,6 +249,10 @@ class Join {
 
   constructor(base: string) {
     this.base = base;
+  }
+
+  isEmpty() {
+    return this.joinDomains.length === 0;
   }
 
   // appends EMPTY to any string that is not a key for an object
