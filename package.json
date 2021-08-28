@@ -1,5 +1,5 @@
 {
-  "name": "mini-orm",
+  "name": "@sunjc826/mini-orm",
   "version": "0.0.1",
   "description": "Test implementation of various enterprise application patterns",
   "main": "./src/index.ts",
@@ -16,7 +16,8 @@
     "url": "git+https://github.com/sunjc826/mini-orm.git#main"
   },
   "engines": {
-    "node": "v14.17.5"
+    "node": ">= 14.17.5",
+    "npm": ">= 6.14.13"
   },
   "author": "sunjc826",
   "license": "ISC",
