@@ -31,7 +31,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlCreate();
     }
-    // write(sql, "sql");
+  
     return (await this.dbPool).query(sql);
   }
 
@@ -44,7 +44,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlTruncate();
     }
-    // write(sql, "sql");
+  
     return (await this.dbPool).query(sql);
   }
 

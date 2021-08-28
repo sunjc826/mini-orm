@@ -161,7 +161,7 @@ export abstract class Table {
     const innerSql = innerSqlArr.join(",");
 
     const sql = `CREATE TABLE ${this.tableName} (${innerSql});`;
-    // write(sql, "sql");
+
     return sql;
   }
 
@@ -267,18 +267,18 @@ export function createTable({
   // const NewTableProxy = new Proxy(NewTable, {
   //   get(target, prop, _receiver) {
   //     if (prop in Object.getOwnPropertyNames(target)) {
-  //       write("already have it");
+  //
   //       return Reflect.get(target, prop);
   //     }
   //     const value = Reflect.get(target, prop);
   //     if (typeof value === "function") {
-  //       write("its an inherited function");
+  //
   //       return value.bind(target);
   //     }
   //     // typeof value is not a function
   //     // we also assume that the target value is an object (for now)
   //     Reflect.set(target, prop, {});
-  //     write("setting and getting prop");
+  //
   //     return Reflect.get(target, prop);
   //   },
   // });
