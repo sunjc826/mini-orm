@@ -11,7 +11,7 @@ import {
 } from "../helpers";
 import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
-import { Query } from "../repository";
+import { Query } from "../repository/query";
 import { getVirtualDomainObject } from "./lazyLoad";
 import { MetaData, MetaDataObjectType, RelationType } from "./metadata";
 import { Table } from "./table";
@@ -435,6 +435,15 @@ export function createMapper<T extends typeof Table>({
   return Mapper;
 }
 
-export * from "./table";
-export * from "./unitOfWork";
-export * from "./metadata";
+// export { Table, createTable } from "./table";
+// export { UnitOfWork } from "./unitOfWork";
+// export {
+//   AllMetadataField,
+//   AllMetadataFieldTypes,
+//   ColumnMap,
+//   ForeignKeyMap,
+//   JoinTableMap,
+//   MetaData,
+//   MetaDataObjectType,
+//   RelationType,
+// } from "./metadata";
