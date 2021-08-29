@@ -3,6 +3,7 @@
   "type": "postgres",
   "host": "localhost",
   "port": 5432,
-  "user": "sunjc826",
+  "user": "postgres",
+  "password": "postgres",
   "database": "orm_test"
 }

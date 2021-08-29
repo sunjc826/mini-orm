@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
-import { MetaDataObjectType } from "../data-mapper/metadata";
+import { MetaDataObjectType } from "../data-mapper/metadata/types";
 import { Table } from "../data-mapper/table";
 import { DomainObject } from "../domain";
 import { formatDbColumn } from "../helpers";

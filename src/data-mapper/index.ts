@@ -13,7 +13,11 @@ import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
 import { Query } from "../repository/query";
 import { getVirtualDomainObject } from "./lazyLoad";
-import { MetaData, MetaDataObjectType, RelationType } from "./metadata";
+import { RelationType } from "./metadata/foreignKeyMap";
+import {
+  MetaData,
+} from "./metadata/metadata";
+import { MetaDataObjectType } from "./metadata/types";
 import { Table } from "./table";
 import { ID_COLUMN_NAME } from "./types";
 
@@ -31,7 +35,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlCreate();
     }
-  
+
     return (await this.dbPool).query(sql);
   }
 
@@ -44,7 +48,7 @@ export abstract class DataMapper {
     for (const { _Table } of Object.values(registry.registry)) {
       sql += _Table.toSqlTruncate();
     }
-  
+
     return (await this.dbPool).query(sql);
   }
 

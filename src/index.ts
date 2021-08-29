@@ -6,7 +6,7 @@ export * from "./repository/strategies/relational";
 export * from "./domain";
 export * from "./data-mapper";
 export * from "./data-mapper/lazyLoad";
-export * from "./data-mapper/metadata";
+export * from "./data-mapper/metadata/metadata";
 export * from "./data-mapper/table";
 export * from "./data-mapper/types";
 export * from "./data-mapper/unitOfWork";
