@@ -13,7 +13,6 @@ import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
 import { Query } from "../repository/query";
 import { getVirtualDomainObject } from "./lazyLoad";
-import { EmbeddedObjectMap } from "./metadata/embeddedObjectMap";
 import { RelationType } from "./metadata/foreignKeyMap";
 import { MetaData } from "./metadata/metadata";
 import { MetaDataObjectType } from "./metadata/types";
@@ -342,6 +341,13 @@ export abstract class DataMapper {
                   throw new Error("unexpected relation type");
                 }
               }
+              break;
+            }
+            case MetaDataObjectType.EMBEDDED_OBJECT_MAP: {
+              const { conversionFunction } = metadataField;
+
+              conversionFunction(tableObj, domainObj);
+
               break;
             }
             default: {

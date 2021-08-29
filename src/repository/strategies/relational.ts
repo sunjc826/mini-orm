@@ -1,4 +1,5 @@
 import { DomainObject } from "../../domain";
+import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
 import { CriterionObject, JoinObject, Query } from "../query";
 import { RepositoryStrategy } from "../types";
@@ -142,7 +143,6 @@ export class RelationalStrategy implements RepositoryStrategy {
     let domainObjects = await BaseMapper.select<T>(
       this.currentQuery!.toQueryString()
     );
-
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
 
     return queryResult || null;

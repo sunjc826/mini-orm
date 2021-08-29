@@ -7,7 +7,7 @@ export class PersonMapper extends createMapper({
   domainKey: PERSON,
   Table: PersonTable,
   embeddedObjectMap: {
-    tableColumns: {
+    domainObjectFields: {
       locationDetails: {
         country: {
           tableColumns: "country",

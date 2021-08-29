@@ -1,3 +1,4 @@
+import { log } from "../../lib-test/tests/helpers";
 import { Table } from "../table";
 import { ID_COLUMN_NAME } from "../types";
 import { ColumnMap } from "./columnMap";
@@ -21,14 +22,16 @@ export class MetaData {
     const metadata = new MetaData();
 
     metadata.domainKey = domainKey;
-
-    const tableColumnsUsedByEmbeddedObject = embeddedObjectMap.tableColumns
-      ? Object.values(embeddedObjectMap.tableColumns).flatMap((obj) =>
-          typeof obj.tableColumns === "string"
-            ? [obj.tableColumns]
-            : obj.tableColumns
-        )
-      : [];
+    const tableColumnsUsedByEmbeddedObject =
+      embeddedObjectMap.domainObjectFields
+        ? Object.values(embeddedObjectMap.domainObjectFields)
+            .flatMap((obj) => Object.values(obj))
+            .flatMap((obj) =>
+              typeof obj.tableColumns === "string"
+                ? [obj.tableColumns]
+                : obj.tableColumns
+            )
+        : [];
 
     for (const [columnName, _columnAttributes] of Object.entries(
       Table.columns
@@ -63,9 +66,9 @@ export class MetaData {
       );
     }
 
-    if (embeddedObjectMap.tableColumns) {
+    if (embeddedObjectMap.domainObjectFields) {
       for (const [domainFieldName, tableColumns] of Object.entries(
-        embeddedObjectMap.tableColumns
+        embeddedObjectMap.domainObjectFields
       )) {
         metadata.metadataFields.push(
           EmbeddedObjectMap.generateUsingCollapseStrategy({
@@ -193,7 +196,7 @@ export namespace MetaData {
   export type EmbeddedObjectOptions = {
     conversionFunction?: EmbeddedObjectMap.ConversionFunction;
     /**
-     * tableColumns has the format:
+     * domainObjectFields has the format:
      * domainFieldName: {
      *  domainSubfield1: {
      *   tableColumns: [col1, col2],
@@ -205,7 +208,10 @@ export namespace MetaData {
      *  }
      * }
      */
-    tableColumns?: Record<string, Record<string, ColumnConversionOptions>>;
+    domainObjectFields?: Record<
+      string,
+      Record<string, ColumnConversionOptions>
+    >;
   };
 }
 export type AllMetadataFieldTypes =

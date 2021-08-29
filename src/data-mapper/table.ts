@@ -189,7 +189,6 @@ export abstract class Table {
       );
     }
     const sql = sqlArr.join(", ");
-    write({ tosqlselect: sql });
     return sql;
   }
 

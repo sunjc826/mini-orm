@@ -35,18 +35,18 @@ export class EmbeddedObjectMap extends AllMetadataField {
       domainObject: Record<string, any>
     ) => {
       domainObject[domainField] = {};
-      for (const [domainSubfield, {tableColumns: columnKeys, columnConversionFunction}] of Object.entries(
-        tableColumns
-      )) {
+      for (const [
+        domainSubfield,
+        { tableColumns: columnKeys, columnConversionFunction },
+      ] of Object.entries(tableColumns)) {
         if (typeof columnKeys === "string") {
           domainObject[domainField][domainSubfield] = columnConversionFunction(
             tableObject[columnKeys]
           );
         } else {
-          const args = columnKeys.map(key => tableObject[key]);
-          domainObject[domainField][domainSubfield] = columnConversionFunction(
-            args
-          );
+          const args = columnKeys.map((key) => tableObject[key]);
+          domainObject[domainField][domainSubfield] =
+            columnConversionFunction(args);
         }
       }
     };
@@ -74,11 +74,6 @@ export declare namespace EmbeddedObjectMap {
   ) => void;
 
   export type ConstructorOptions = ConversionFunction;
-
-  export interface ColumnOptions {
-    tableColumnKeys: Array<string>,
-    columnConversionFunction: 
-  }
 
   export interface GenerateUsingCollapseStrategyOptions {
     tableColumns: Record<string, MetaData.ColumnConversionOptions>;

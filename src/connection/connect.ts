@@ -39,6 +39,7 @@ export class DbPool {
     if (this.logGeneratedSql) {
       write(queryText, "sql", true);
     }
+    write(queryText, "sql", false);
     const result = await this.pool.query(queryText, values);
     return result.rows;
   }

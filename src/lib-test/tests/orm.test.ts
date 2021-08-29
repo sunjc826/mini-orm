@@ -1,6 +1,6 @@
 import { DataMapper } from "../../data-mapper";
 import { AuthorTable, AuthorTest } from "../tables/author";
-import { clear, sqlIsTableExists } from "./helpers";
+import { clear, log, sqlIsTableExists } from "./helpers";
 import { BookTable, BookTest } from "../tables/book";
 
 // register stuff to registry
@@ -14,6 +14,7 @@ import { Book } from "../models/book";
 import { Person } from "../models/person";
 import { AUTHOR, BOOK, PUBLISHER } from "../domainKeys";
 import { Publisher } from "../models/publisher";
+import { PersonTest } from "../tables/person";
 
 let pool: DbPool;
 beforeAll(async () => {
@@ -89,7 +90,7 @@ test("foreign key mapping", async () => {
 
 test("topological sort", async () => {
   const sorted = registry.getCorrectInsertOrder();
-  expect(sorted).toEqual(["author", "book", "publisher"]);
+  expect(sorted).toEqual(["author", "person", "book", "publisher"]);
 });
 
 async function createTestAuthor() {
@@ -228,4 +229,12 @@ test("update proxied object", async () => {
   await DomainObject.commit();
   const updatedRegion = await (await author.books[0]).publisher.region;
   expect(updatedRegion).toEqual("UpdatedTestRegion");
+});
+
+test("embedded object mapping", async () => {
+  await pool.query(PersonTest.insertSql);
+  const person = await Person.findById<Person>(1);
+  expect(person).toBeDefined();
+  expect(person?.locationDetails.country).toEqual("USA");
+  expect(person?.locationDetails.town).toEqual("Area 51");
 });

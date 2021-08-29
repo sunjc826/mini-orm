@@ -9,7 +9,8 @@
     "test": "jest --verbose=true",
     "test-join": "jest --verbose=true --testNamePattern=join",
     "test-single": "jest --verbose=true --testNamePattern=single",
-    "test-multi": "jest --verbose=true --testNamePattern=multi"
+    "test-multi": "jest --verbose=true --testNamePattern=multi",
+    "test-embedded": "jest --verbose=true --testNamePattern=embedded"
   },
   "repository": {
     "type": "git",

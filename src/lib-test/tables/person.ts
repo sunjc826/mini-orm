@@ -32,3 +32,9 @@ export const PersonTable = createTable({
     },
   },
 });
+
+export namespace PersonTest {
+  export var insertSql = `INSERT INTO persons (name, age, food, country, town, street) VALUES
+  ('Bob Page', 45, 'Nanomachines', 'USA', 'Area 51', 'Sector 4');
+  `;
+}
