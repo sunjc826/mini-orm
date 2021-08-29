@@ -5,4 +5,9 @@ export class Person extends createDomainObject({ domainKey: PERSON }) {
   name: string;
   age: number;
   favoriteFood: string;
+  locationDetails: {
+    country: string;
+    town: string;
+    streetName: string;
+  };
 }

@@ -21,5 +21,14 @@ export const PersonTable = createTable({
     food: {
       type: "text",
     },
+    country: {
+      type: "text",
+    },
+    town: {
+      type: "text",
+    },
+    street: {
+      type: "text",
+    },
   },
 });

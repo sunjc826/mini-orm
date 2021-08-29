@@ -13,10 +13,9 @@ import { Promisify } from "../helpers/types";
 import { registry } from "../registry";
 import { Query } from "../repository/query";
 import { getVirtualDomainObject } from "./lazyLoad";
+import { EmbeddedObjectMap } from "./metadata/embeddedObjectMap";
 import { RelationType } from "./metadata/foreignKeyMap";
-import {
-  MetaData,
-} from "./metadata/metadata";
+import { MetaData } from "./metadata/metadata";
 import { MetaDataObjectType } from "./metadata/types";
 import { Table } from "./table";
 import { ID_COLUMN_NAME } from "./types";
@@ -393,49 +392,28 @@ export namespace DataMapper {
   };
 }
 
-interface CreateMapperOptions<T extends typeof Table> {
+interface CreateMapperOptions<T extends typeof Table>
+  extends MetaData.GenerateMetaDataOptions<T> {
   domainKey: string;
-  Table?: T;
-  /**
-   * A mapping of tableColumnName to domainFieldName
-   */
-  columnMap?: Record<string, string>;
-  /**
-   * A mapping of relationName to options
-   */
-  belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
-  hasOne?: Record<string, MetaData.RelationOptionsWithoutName>;
-  hasMany?: Record<string, MetaData.RelationOptionsWithoutName>;
+  Table: T;
 }
 
 export function createMapper<T extends typeof Table>({
   domainKey,
   Table,
-  belongsTo = {},
-  hasOne = {},
-  hasMany = {},
-  columnMap = {},
+  ...metadataOptions
 }: CreateMapperOptions<T>) {
   // Table takes priority
   const TableClass = Table || registry.getTable(domainKey!);
   const Mapper = class extends DataMapper {
     static domainKey = domainKey;
   };
-  Mapper.metadata = MetaData.generateDefaultMetaData({
+  Mapper.metadata = MetaData.generateMetaData({
     domainKey,
     Table: TableClass,
-    customColumnMap: columnMap,
+    ...metadataOptions,
   });
-  // TODO: quite a lot of repetition here
-  for (const [key, options] of Object.entries(belongsTo)) {
-    Mapper.metadata.belongsTo({ relationName: key, ...options });
-  }
-  for (const [key, options] of Object.entries(hasOne)) {
-    Mapper.metadata.hasOne({ relationName: key, ...options });
-  }
-  for (const [key, options] of Object.entries(hasMany)) {
-    Mapper.metadata.hasMany({ relationName: key, ...options });
-  }
+
   return Mapper;
 }
 

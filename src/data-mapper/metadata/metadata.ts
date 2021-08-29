@@ -1,6 +1,7 @@
 import { Table } from "../table";
 import { ID_COLUMN_NAME } from "../types";
 import { ColumnMap } from "./columnMap";
+import { EmbeddedObjectMap } from "./embeddedObjectMap";
 import { ForeignKeyMap, RelationType } from "./foreignKeyMap";
 import { MetaDataObjectType } from "./types";
 
@@ -8,13 +9,27 @@ export class MetaData {
   domainKey: string;
   metadataFields: Array<AllMetadataFieldTypes> = [];
 
-  static generateDefaultMetaData<T extends typeof Table>({
+  static generateMetaData<T extends typeof Table>({
     domainKey,
     Table,
-    customColumnMap,
-  }: MetaData.GenerateDefaultMetaDataOptions<T>): MetaData {
+    customColumnMap: columnMap = {},
+    embeddedObjectMap = {},
+    belongsTo = {},
+    hasOne = {},
+    hasMany = {},
+  }: MetaData.GenerateMetaDataOptions<T>): MetaData {
     const metadata = new MetaData();
+
     metadata.domainKey = domainKey;
+
+    const tableColumnsUsedByEmbeddedObject = embeddedObjectMap.tableColumns
+      ? Object.values(embeddedObjectMap.tableColumns).flatMap((obj) =>
+          typeof obj.tableColumns === "string"
+            ? [obj.tableColumns]
+            : obj.tableColumns
+        )
+      : [];
+
     for (const [columnName, _columnAttributes] of Object.entries(
       Table.columns
     )) {
@@ -24,8 +39,11 @@ export class MetaData {
         continue;
       }
 
-      // don't generate default column map is table column has its customized map
-      if (columnName in customColumnMap) {
+      // don't generate default column map if table column has its customized map
+      if (
+        columnName in columnMap ||
+        columnName in tableColumnsUsedByEmbeddedObject
+      ) {
         continue;
       }
 
@@ -33,61 +51,70 @@ export class MetaData {
     }
     metadata.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
 
-    for (const [tableColumnKey, domainFieldName] of Object.entries(
-      customColumnMap
-    )) {
+    for (const [tableColumnKey, domainFieldName] of Object.entries(columnMap)) {
       metadata.metadataFields.push(
         new ColumnMap({ tableColumnKey, domainFieldName })
       );
     }
 
+    if (embeddedObjectMap.conversionFunction) {
+      metadata.metadataFields.push(
+        new EmbeddedObjectMap(embeddedObjectMap.conversionFunction)
+      );
+    }
+
+    if (embeddedObjectMap.tableColumns) {
+      for (const [domainFieldName, tableColumns] of Object.entries(
+        embeddedObjectMap.tableColumns
+      )) {
+        metadata.metadataFields.push(
+          EmbeddedObjectMap.generateUsingCollapseStrategy({
+            domainField: domainFieldName,
+            tableColumns,
+          })
+        );
+      }
+    }
+
+    for (const [key, options] of Object.entries(belongsTo)) {
+      metadata.belongsTo({ relationName: key, ...options });
+    }
+    for (const [key, options] of Object.entries(hasOne)) {
+      metadata.hasOne({ relationName: key, ...options });
+    }
+    for (const [key, options] of Object.entries(hasMany)) {
+      metadata.hasMany({ relationName: key, ...options });
+    }
+
     return metadata;
   }
 
-  belongsTo({
-    relationName,
-    foreignKey,
-    otherDomainKey,
-  }: MetaData.RelationOptions) {
+  belongsTo(options: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.BELONGS_TO,
-        relationName,
-        foreignKey,
         domainKey: this.domainKey,
-        otherDomainKey,
+        ...options,
       })
     );
   }
 
-  hasOne({
-    relationName,
-    foreignKey,
-    otherDomainKey,
-  }: MetaData.RelationOptions) {
+  hasOne(options: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.HAS_ONE,
-        relationName,
-        foreignKey,
         domainKey: this.domainKey,
-        otherDomainKey,
+        ...options,
       })
     );
   }
 
-  hasMany({
-    relationName,
-    foreignKey,
-    otherDomainKey,
-  }: MetaData.RelationOptions) {
+  hasMany(options: MetaData.RelationOptions) {
     this.metadataFields.push(
       new ForeignKeyMap({
         relationType: RelationType.HAS_MANY,
-        relationName,
-        foreignKey,
         domainKey: this.domainKey,
-        otherDomainKey,
+        ...options,
       })
     );
   }
@@ -125,14 +152,24 @@ export class MetaData {
   }
 }
 
-export declare namespace MetaData {
-  export interface GenerateDefaultMetaDataOptions<T extends typeof Table> {
+export namespace MetaData {
+  export interface GenerateMetaDataOptions<T extends typeof Table> {
     domainKey: string;
     Table: T;
     /**
      * A mapping of tableColumnName to domainFieldName
      */
-    customColumnMap: Record<string, string>;
+    customColumnMap?: Record<string, string>;
+    /**
+     * A mapping of domainFieldName to multiple table columns
+     */
+    embeddedObjectMap?: EmbeddedObjectOptions;
+    /**
+     * A mapping of relationName to options
+     */
+    belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
+    hasOne?: Record<string, MetaData.RelationOptionsWithoutName>;
+    hasMany?: Record<string, MetaData.RelationOptionsWithoutName>;
   }
 
   export interface RelationOptionsWithoutName {
@@ -143,5 +180,35 @@ export declare namespace MetaData {
   export interface RelationOptions extends RelationOptionsWithoutName {
     relationName: string;
   }
+
+  /**
+   * A function that converts a bunch of table column values to a domain field value.
+   */
+  export type ColumnConversionFunction = (...columnValues: Array<any>) => any;
+  export interface ColumnConversionOptions {
+    tableColumns: string | Array<string>;
+    columnConversionFunction: ColumnConversionFunction;
+  }
+  export var Identity = (ele: any) => ele;
+  export type EmbeddedObjectOptions = {
+    conversionFunction?: EmbeddedObjectMap.ConversionFunction;
+    /**
+     * tableColumns has the format:
+     * domainFieldName: {
+     *  domainSubfield1: {
+     *   tableColumns: [col1, col2],
+     *   columnConversionFunction: ([col1, col2]) => value;
+     *  }
+     *  domainSubfield2: {
+     *   tableColumns: col1
+     *   columnConversionFunction: Metadata.Identity
+     *  }
+     * }
+     */
+    tableColumns?: Record<string, Record<string, ColumnConversionOptions>>;
+  };
 }
-export type AllMetadataFieldTypes = ColumnMap | ForeignKeyMap;
+export type AllMetadataFieldTypes =
+  | ColumnMap
+  | ForeignKeyMap
+  | EmbeddedObjectMap;
