@@ -1,6 +1,6 @@
 import { DataMapper } from "../../data-mapper";
 import { AuthorTable, AuthorTest } from "../tables/author";
-import { clear, log, sqlIsTableExists } from "./helpers";
+import { clear, sqlIsTableExists } from "./helpers";
 import { BookTable, BookTest } from "../tables/book";
 
 // register stuff to registry
@@ -113,12 +113,21 @@ async function findTestAuthor() {
 }
 
 async function createTestPerson() {
-  Person.create<Person>({ name: "TestPerson", age: 30, favoriteFood: "salad" });
+  Person.create<Person>({
+    name: "TestPerson",
+    age: 30,
+    favoriteFood: "salad",
+    locationDetails: {
+      country: "TestCountry",
+      town: "TestTown",
+      streetName: "TestStreet St",
+    },
+  });
   await DomainObject.commit();
   const person = (await Person.find({
     domainObjectField: "name",
     value: "TestPerson",
-  }).exec()) as Author;
+  }).exec()) as Person;
   expect(person).toBeDefined();
   expect(person.name).toEqual("TestPerson");
   return person;
@@ -231,10 +240,35 @@ test("update proxied object", async () => {
   expect(updatedRegion).toEqual("UpdatedTestRegion");
 });
 
-test("embedded object mapping", async () => {
+test("manual object mapping select", async () => {
   await pool.query(PersonTest.insertSql);
   const person = await Person.findById<Person>(1);
   expect(person).toBeDefined();
   expect(person?.locationDetails.country).toEqual("USA");
   expect(person?.locationDetails.town).toEqual("Area 51");
+});
+
+test("manual table column mapping insert", async () => {
+  const person = await createTestPerson();
+  expect(person.locationDetails.country).toEqual("TestCountry");
+  expect(person.locationDetails.streetName).toEqual("TestStreet St");
+});
+
+test("manual table column mapping update", async () => {
+  const person = await createTestPerson();
+  expect(person.locationDetails.country).toEqual("TestCountry");
+  person.update<Person>({
+    locationDetails: {
+      ...person.locationDetails, // TODO: Manual merging is needed when doing updates due to limitations of dependency tracking
+      // without the above line, the sql generated will set street to undefined.
+      country: "TestCountry2",
+      town: "TestTown2",
+    },
+  });
+  await DomainObject.commit();
+  const updatedPerson = await Person.findById<Person>(1);
+  expect(updatedPerson).toBeDefined();
+  expect(updatedPerson?.locationDetails.country).toEqual("TestCountry2");
+  expect(updatedPerson?.locationDetails.town).toEqual("TestTown2");
+  expect(updatedPerson?.locationDetails.streetName).toEqual("TestStreet St");
 });

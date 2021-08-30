@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { PoolClient } from "pg";
 import { DataMapper } from ".";
 import { DomainObject } from "../domain";
@@ -54,11 +55,14 @@ export class UnitOfWork {
       for (const ele of domainObject.dirtied) {
         dirtied.add(ele);
       }
-      this.dirtyObjects[domainKey][id] = {
-        ...storedObj,
-        ...domainObject,
+      // this.dirtyObjects[domainKey][id] = {
+      //   ...storedObj,
+      //   ...domainObject,
+      //   dirtied,
+      // };
+      this.dirtyObjects[domainKey][id] = _.merge(storedObj, domainObject, {
         dirtied,
-      };
+      });
     } else {
       this.dirtyObjects[domainKey][id] = domainObject;
     }

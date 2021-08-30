@@ -3,6 +3,7 @@ import {
   OwnKeyValues,
   Promisify,
   PromisifyArray,
+  RecursivePartial,
 } from "../helpers/types";
 import { registry } from "../registry";
 import { getRepoProxy, Repo } from "../repository";
@@ -46,7 +47,7 @@ export class DomainObject {
   }
 
   update<T extends DomainObject>(
-    ownKeyValues: Partial<OwnKeyValues<T>>,
+    ownKeyValues: RecursivePartial<OwnKeyValues<T>>,
     merge: boolean = true
   ) {
     const dirtiedProps = Object.keys(ownKeyValues);

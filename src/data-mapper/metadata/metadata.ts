@@ -1,9 +1,9 @@
-import { log } from "../../lib-test/tests/helpers";
 import { Table } from "../table";
 import { ID_COLUMN_NAME } from "../types";
 import { ColumnMap } from "./columnMap";
-import { EmbeddedObjectMap } from "./embeddedObjectMap";
+import { ManualObjectMap } from "./manualObjectMap";
 import { ForeignKeyMap, RelationType } from "./foreignKeyMap";
+import { ManualColumnMap } from "./manualColumnMap";
 import { MetaDataObjectType } from "./types";
 
 export class MetaData {
@@ -13,8 +13,8 @@ export class MetaData {
   static generateMetaData<T extends typeof Table>({
     domainKey,
     Table,
-    customColumnMap: columnMap = {},
-    embeddedObjectMap = {},
+    customColumnMap = {},
+    customObjectMap = {},
     belongsTo = {},
     hasOne = {},
     hasMany = {},
@@ -22,16 +22,15 @@ export class MetaData {
     const metadata = new MetaData();
 
     metadata.domainKey = domainKey;
-    const tableColumnsUsedByEmbeddedObject =
-      embeddedObjectMap.domainObjectFields
-        ? Object.values(embeddedObjectMap.domainObjectFields)
-            .flatMap((obj) => Object.values(obj))
-            .flatMap((obj) =>
-              typeof obj.tableColumns === "string"
-                ? [obj.tableColumns]
-                : obj.tableColumns
-            )
-        : [];
+    const tableColumnsUsedByEmbeddedObject = customObjectMap.domainObjectFields
+      ? Object.values(customObjectMap.domainObjectFields)
+          .flatMap((obj) => Object.values(obj))
+          .flatMap((obj) =>
+            typeof obj.tableColumns === "string"
+              ? [obj.tableColumns]
+              : obj.tableColumns
+          )
+      : [];
 
     for (const [columnName, _columnAttributes] of Object.entries(
       Table.columns
@@ -44,7 +43,7 @@ export class MetaData {
 
       // don't generate default column map if table column has its customized map
       if (
-        columnName in columnMap ||
+        columnName in customColumnMap ||
         columnName in tableColumnsUsedByEmbeddedObject
       ) {
         continue;
@@ -54,24 +53,38 @@ export class MetaData {
     }
     metadata.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
 
-    for (const [tableColumnKey, domainFieldName] of Object.entries(columnMap)) {
-      metadata.metadataFields.push(
-        new ColumnMap({ tableColumnKey, domainFieldName })
-      );
+    for (const [tableColumnKey, value] of Object.entries(customColumnMap)) {
+      if (typeof value === "string") {
+        metadata.metadataFields.push(
+          new ColumnMap({ tableColumnKey, domainFieldName: value })
+        );
+      } else if (typeof value === "object") {
+        metadata.metadataFields.push(
+          new ManualColumnMap({
+            tableColumnKey,
+            domainObjectFields: value.domainObjectFields,
+            fieldConversionFunction: value.fieldConversionFunction,
+          })
+        );
+      } else {
+        throw new Error(
+          "expecting either a domain field name or a conversion function"
+        );
+      }
     }
 
-    if (embeddedObjectMap.conversionFunction) {
-      metadata.metadataFields.push(
-        new EmbeddedObjectMap(embeddedObjectMap.conversionFunction)
-      );
-    }
+    // if (embeddedObjectMap.conversionFunction) {
+    //   metadata.metadataFields.push(
+    //     new EmbeddedObjectMap(embeddedObjectMap.conversionFunction)
+    //   );
+    // }
 
-    if (embeddedObjectMap.domainObjectFields) {
+    if (customObjectMap.domainObjectFields) {
       for (const [domainFieldName, tableColumns] of Object.entries(
-        embeddedObjectMap.domainObjectFields
+        customObjectMap.domainObjectFields
       )) {
         metadata.metadataFields.push(
-          EmbeddedObjectMap.generateUsingCollapseStrategy({
+          ManualObjectMap.generateUsingCollapseStrategy({
             domainField: domainFieldName,
             tableColumns,
           })
@@ -162,11 +175,17 @@ export namespace MetaData {
     /**
      * A mapping of tableColumnName to domainFieldName
      */
-    customColumnMap?: Record<string, string>;
+    /**
+     * tableColumns has the format:
+     * tableColumnKey: {
+     *  fieldConversionFunction: obj => value;
+     * }
+     */
+    customColumnMap?: Record<string, string | FieldConversionOptions>;
     /**
      * A mapping of domainFieldName to multiple table columns
      */
-    embeddedObjectMap?: EmbeddedObjectOptions;
+    customObjectMap?: ManualObjectOptions;
     /**
      * A mapping of relationName to options
      */
@@ -192,9 +211,13 @@ export namespace MetaData {
     tableColumns: string | Array<string>;
     columnConversionFunction: ColumnConversionFunction;
   }
+  export interface FieldConversionOptions {
+    domainObjectFields: string | Array<string>;
+    fieldConversionFunction: (domainObj: any) => any;
+  }
   export var Identity = (ele: any) => ele;
-  export type EmbeddedObjectOptions = {
-    conversionFunction?: EmbeddedObjectMap.ConversionFunction;
+  export type ManualObjectOptions = {
+    conversionFunction?: ManualObjectMap.ConversionFunction;
     /**
      * domainObjectFields has the format:
      * domainFieldName: {
@@ -217,4 +240,5 @@ export namespace MetaData {
 export type AllMetadataFieldTypes =
   | ColumnMap
   | ForeignKeyMap
-  | EmbeddedObjectMap;
+  | ManualObjectMap
+  | ManualColumnMap;

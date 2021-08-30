@@ -2,12 +2,13 @@ import { MetaData } from "./metadata";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 // TODO: Another possible extension to embedded object map is serialized large object.
 // This can be another default strategy.
+// TODO: A further improvement to the embedded object map is to allow arbitrary levels of nesting.
 /**
  * Encapsulates a mapping in the form of many db table columns : one/many domain object fields.
  */
-export class EmbeddedObjectMap extends AllMetadataField {
-  variant = MetaDataObjectType.EMBEDDED_OBJECT_MAP as const;
-  conversionFunction: EmbeddedObjectMap.ConversionFunction;
+export class ManualObjectMap extends AllMetadataField {
+  variant = MetaDataObjectType.MANUAL_OBJECT_MAP as const;
+  conversionFunction: ManualObjectMap.ConversionFunction;
 
   /**
    * Probably the most general form of column to field mapping. Conversion function allows
@@ -16,7 +17,7 @@ export class EmbeddedObjectMap extends AllMetadataField {
    * @param conversionFunction A function that takes in a tableObject and domainObject,
    *  and maps fields from tableObject to domainObject.
    */
-  constructor(conversionFunction: EmbeddedObjectMap.ConstructorOptions) {
+  constructor({ conversionFunction }: ManualObjectMap.ConstructorOptions) {
     super();
     this.conversionFunction = conversionFunction;
   }
@@ -29,7 +30,7 @@ export class EmbeddedObjectMap extends AllMetadataField {
   static generateUsingCollapseStrategy({
     tableColumns,
     domainField,
-  }: EmbeddedObjectMap.GenerateUsingCollapseStrategyOptions) {
+  }: ManualObjectMap.GenerateUsingCollapseStrategyOptions) {
     const conversionFunction = (
       tableObject: Record<string, any>,
       domainObject: Record<string, any>
@@ -51,7 +52,9 @@ export class EmbeddedObjectMap extends AllMetadataField {
       }
     };
 
-    return new EmbeddedObjectMap(conversionFunction);
+    return new ManualObjectMap({
+      conversionFunction,
+    });
   }
 
   // TODO
@@ -64,16 +67,18 @@ export class EmbeddedObjectMap extends AllMetadataField {
   static generateUsingSerializedObject({
     tableColumn,
     domainField,
-  }: EmbeddedObjectMap.GenerateUsingSerializedObjectOptions) {}
+  }: ManualObjectMap.GenerateUsingSerializedObjectOptions) {}
 }
 
-export declare namespace EmbeddedObjectMap {
+export namespace ManualObjectMap {
   export type ConversionFunction = (
     tableObject: Record<string, string>,
     domainObject: Record<string, any>
   ) => void;
 
-  export type ConstructorOptions = ConversionFunction;
+  export type ConstructorOptions = {
+    conversionFunction: ConversionFunction;
+  };
 
   export interface GenerateUsingCollapseStrategyOptions {
     tableColumns: Record<string, MetaData.ColumnConversionOptions>;

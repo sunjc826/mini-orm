@@ -17,3 +17,7 @@ export type PromisifyArray<T> = Promisify<T> & {
 export type OwnKeyValues<T> = {
   [idx in keyof T]: T[idx];
 };
+
+export type RecursivePartial<T> = {
+  [idx in keyof T]?: RecursivePartial<T[idx]>;
+};

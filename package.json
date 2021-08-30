@@ -7,10 +7,7 @@
     "start": "ts-node ./src/index.ts",
     "dev": "ts-node-transpile-only ./src/index.ts",
     "test": "jest --verbose=true",
-    "test-join": "jest --verbose=true --testNamePattern=join",
-    "test-single": "jest --verbose=true --testNamePattern=single",
-    "test-multi": "jest --verbose=true --testNamePattern=multi",
-    "test-embedded": "jest --verbose=true --testNamePattern=embedded"
+    "test-join": "jest --verbose=true --testNamePattern=join"
   },
   "repository": {
     "type": "git",

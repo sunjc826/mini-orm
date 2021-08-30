@@ -3,6 +3,7 @@ import { PoolClient } from "pg";
 import { getPool } from "../connection";
 import { DbPool, ResultSet } from "../connection";
 import { DomainObject } from "../domain";
+import { MetaDataErrors } from "../errors";
 import {
   brackets,
   dbColumnNameToColumnKey,
@@ -158,8 +159,41 @@ export abstract class DataMapper {
             }
             break;
           }
+          case MetaDataObjectType.MANUAL_OBJECT_MAP: {
+            // not needed
+            break;
+          }
+          case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+            const {
+              tableColumnKey,
+              domainObjectFields,
+              fieldConversionFunction,
+            } = metadataField;
+
+            const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+            const dependencies =
+              typeof domainObjectFields === "string"
+                ? [domainObjectFields]
+                : domainObjectFields;
+            let requiresUpdate = false;
+            for (const dependency of dependencies) {
+              if (domainObjects[i].dirtied.has(dependency)) {
+                requiresUpdate = true;
+                break;
+              }
+            }
+            if (!requiresUpdate) {
+              continue;
+            }
+            sqlSetPartArr[i].push(`${actualDbColumnName}=
+              ${Table.convertColumnValueToSqlString(
+                tableColumnKey,
+                fieldConversionFunction(domainObj)
+              )}`);
+            break;
+          }
           default: {
-            throw new Error("unexpected metadata object type");
+            throw MetaDataErrors.UNEXPECTED_TYPE;
           }
         }
       }
@@ -210,6 +244,21 @@ export abstract class DataMapper {
             const actualDbColumnName = Table.getDbColumnName(foreignKey);
             sqlColumnNamesPartArr.push(actualDbColumnName);
           }
+          break;
+        }
+        case MetaDataObjectType.MANUAL_OBJECT_MAP: {
+          // not needed
+          break;
+        }
+        case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+          const { tableColumnKey } = metadataField;
+          const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+
+          sqlColumnNamesPartArr.push(actualDbColumnName);
+          break;
+        }
+        default: {
+          throw MetaDataErrors.UNEXPECTED_TYPE;
         }
       }
     }
@@ -241,6 +290,23 @@ export abstract class DataMapper {
                 await (domainObj[relationName] as Promisify<DomainObject>).id
               );
             }
+            break;
+          }
+          case MetaDataObjectType.MANUAL_OBJECT_MAP: {
+            // not needed
+            break;
+          }
+          case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+            const {
+              tableColumnKey,
+              fieldConversionFunction: conversionFunction,
+            } = metadataField;
+            sqlValuesPartArr[i].push(
+              Table.convertColumnValueToSqlString(
+                tableColumnKey,
+                conversionFunction(domainObj)
+              )
+            );
             break;
           }
           default: {
@@ -338,20 +404,22 @@ export abstract class DataMapper {
                   break;
                 }
                 default: {
-                  throw new Error("unexpected relation type");
+                  throw MetaDataErrors.UNEXPECTED_RELATION_TYPE;
                 }
               }
               break;
             }
-            case MetaDataObjectType.EMBEDDED_OBJECT_MAP: {
+            case MetaDataObjectType.MANUAL_OBJECT_MAP: {
               const { conversionFunction } = metadataField;
-
               conversionFunction(tableObj, domainObj);
-
+              break;
+            }
+            case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+              // not needed
               break;
             }
             default: {
-              throw new Error("unexpected metadata object type");
+              throw MetaDataErrors.UNEXPECTED_TYPE;
             }
           }
         });
