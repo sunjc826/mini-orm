@@ -25,6 +25,13 @@ export abstract class DataMapper {
   static dbPool: Promise<DbPool> = getPool(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
 
+  static generateMetaData<T extends typeof Table>(
+    options: MetaData.GenerateMetaDataOptions<T>
+  ) {
+    this.metadata = new MetaData();
+    this.metadata.generateMetaData(options);
+  }
+
   /**
    * Creates all registered tables in db.
    * @returns Promise of db query.
@@ -482,7 +489,7 @@ export function createMapper<T extends typeof Table>({
   const Mapper = class extends DataMapper {
     static domainKey = domainKey;
   };
-  Mapper.metadata = MetaData.generateMetaData({
+  Mapper.generateMetaData({
     domainKey,
     Table: TableClass,
     ...metadataOptions,

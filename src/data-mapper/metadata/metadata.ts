@@ -5,12 +5,13 @@ import { ManualObjectMap } from "./manualObjectMap";
 import { ForeignKeyMap, RelationType } from "./foreignKeyMap";
 import { ManualColumnMap } from "./manualColumnMap";
 import { MetaDataObjectType } from "./types";
+import { DataMapper } from "..";
 
 export class MetaData {
   domainKey: string;
   metadataFields: Array<AllMetadataFieldTypes> = [];
 
-  static generateMetaData<T extends typeof Table>({
+  generateMetaData<T extends typeof Table>({
     domainKey,
     Table,
     customColumnMap = {},
@@ -18,10 +19,9 @@ export class MetaData {
     belongsTo = {},
     hasOne = {},
     hasMany = {},
-  }: MetaData.GenerateMetaDataOptions<T>): MetaData {
-    const metadata = new MetaData();
-
-    metadata.domainKey = domainKey;
+    customInheritanceOptions = MetaData.TableInheritance.NONE,
+  }: MetaData.GenerateMetaDataOptions<T>) {
+    this.domainKey = domainKey;
     const tableColumnsUsedByEmbeddedObject = customObjectMap.domainObjectFields
       ? Object.values(customObjectMap.domainObjectFields)
           .flatMap((obj) => Object.values(obj))
@@ -49,17 +49,17 @@ export class MetaData {
         continue;
       }
 
-      metadata.metadataFields.push(ColumnMap.usingColumn(columnName));
+      this.metadataFields.push(ColumnMap.usingColumn(columnName));
     }
-    metadata.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
+    this.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
 
     for (const [tableColumnKey, value] of Object.entries(customColumnMap)) {
       if (typeof value === "string") {
-        metadata.metadataFields.push(
+        this.metadataFields.push(
           new ColumnMap({ tableColumnKey, domainFieldName: value })
         );
       } else if (typeof value === "object") {
-        metadata.metadataFields.push(
+        this.metadataFields.push(
           new ManualColumnMap({
             tableColumnKey,
             domainObjectFields: value.domainObjectFields,
@@ -83,7 +83,7 @@ export class MetaData {
       for (const [domainFieldName, tableColumns] of Object.entries(
         customObjectMap.domainObjectFields
       )) {
-        metadata.metadataFields.push(
+        this.metadataFields.push(
           ManualObjectMap.generateUsingCollapseStrategy({
             domainField: domainFieldName,
             tableColumns,
@@ -93,16 +93,14 @@ export class MetaData {
     }
 
     for (const [key, options] of Object.entries(belongsTo)) {
-      metadata.belongsTo({ relationName: key, ...options });
+      this.belongsTo({ relationName: key, ...options });
     }
     for (const [key, options] of Object.entries(hasOne)) {
-      metadata.hasOne({ relationName: key, ...options });
+      this.hasOne({ relationName: key, ...options });
     }
     for (const [key, options] of Object.entries(hasMany)) {
-      metadata.hasMany({ relationName: key, ...options });
+      this.hasMany({ relationName: key, ...options });
     }
-
-    return metadata;
   }
 
   belongsTo(options: MetaData.RelationOptions) {
@@ -169,6 +167,16 @@ export class MetaData {
 }
 
 export namespace MetaData {
+  export enum TableInheritance {
+    NONE,
+    SINGLE_TABLE,
+  }
+
+  export interface SingleTableInheritanceOptions {
+    variant: TableInheritance.SINGLE_TABLE;
+    ParentMapper: typeof DataMapper | null; // null indicates root mapper
+  }
+
   export interface GenerateMetaDataOptions<T extends typeof Table> {
     domainKey: string;
     Table: T;
@@ -192,6 +200,9 @@ export namespace MetaData {
     belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
     hasOne?: Record<string, MetaData.RelationOptionsWithoutName>;
     hasMany?: Record<string, MetaData.RelationOptionsWithoutName>;
+    customInheritanceOptions?:
+      | TableInheritance.NONE
+      | SingleTableInheritanceOptions;
   }
 
   export interface RelationOptionsWithoutName {
