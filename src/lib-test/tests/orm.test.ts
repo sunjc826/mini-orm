@@ -283,18 +283,22 @@ test("single table inheritance select", async () => {
   expect(footballer?.club).toEqual("ClubX");
 });
 
-test("single table inheritance insert", async () => {
+async function createFootballer() {
   Footballer.create<Footballer>({ name: "TestFootballer", club: "TestClub" });
   await DomainObject.commit();
   const footballer = await Footballer.findById<Footballer>(1);
   expect(footballer).toBeDefined();
+  return footballer;
+}
+
+test("single table inheritance insert", async () => {
+  const footballer = await createFootballer();
   expect(footballer?.name).toEqual("TestFootballer");
   expect(footballer?.club).toEqual("TestClub");
 });
 
 test("single table inheritance update", async () => {
-  Footballer.create<Footballer>({ name: "TestFootballer", club: "TestClub" });
-  await DomainObject.commit();
+  await createFootballer();
   const footballer = await Footballer.findById<Footballer>(1);
   footballer?.update<Footballer>({
     name: "TestFootballer2",
@@ -305,4 +309,12 @@ test("single table inheritance update", async () => {
   expect(updatedFootballer).toBeDefined();
   expect(updatedFootballer?.name).toEqual("TestFootballer2");
   expect(updatedFootballer?.club).toEqual("TestClub2");
+});
+
+test("single table inheritance delete", async () => {
+  const footballer = await createFootballer();
+  footballer?.destroy();
+  await DomainObject.commit();
+  const nullFootballer = await Footballer.findById<Footballer>(1);
+  expect(nullFootballer).toBeNull();
 });

@@ -1,5 +1,4 @@
 import _ from "lodash";
-import { PoolClient } from "pg";
 import { DataMapper } from ".";
 import { DbClient } from "../connection/connect";
 import { DomainObject } from "../domain";
@@ -210,7 +209,7 @@ class IdentityMap {
   }
 
   reset() {
-    for (const key of Object.keys(this.map)) {
+    for (const key in this.map) {
       this.map[key] = [];
     }
   }
@@ -235,7 +234,7 @@ class IdentityMap {
     this.map[domainKey][id] = domainObject;
   }
 
-  delete<T extends DomainObject>(domainKey: string, domainObjectId: number) {
-    this.map[domainKey][domainObjectId] = null;
+  delete(domainKey: string, domainObjectId: number) {
+    delete this.map[domainKey][domainObjectId];
   }
 }
