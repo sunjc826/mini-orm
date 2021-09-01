@@ -6,23 +6,38 @@ import { ForeignKeyMap, RelationType } from "./foreignKeyMap";
 import { ManualColumnMap } from "./manualColumnMap";
 import { MetaDataObjectType } from "./types";
 import { DataMapper } from "..";
+import { SingleTableInheritanceMap } from "./singleTableInheritanceMap";
 
 export class MetaData {
   domainKey: string;
   metadataFields: Array<AllMetadataFieldTypes> = [];
 
-  generateMetaData<T extends typeof Table>({
-    domainKey,
+  generateMetaData<T extends typeof Table>(
+    options: MetaData.GenerateMetaDataOptions<T>
+  ) {
+    const customInheritanceOptions =
+      options.customInheritanceOptions || MetaData.TableInheritance.NONE;
+
+    this.domainKey = options.domainKey;
+    if (customInheritanceOptions === MetaData.TableInheritance.NONE) {
+      this.generateRegularMetaData(options);
+    } else if (
+      customInheritanceOptions.variant ===
+      MetaData.TableInheritance.SINGLE_TABLE
+    ) {
+      this.generateSingleTableInheritanceMetaData(options);
+    }
+  }
+
+  private generateRegularMetaData<T extends typeof Table>({
     Table,
     customColumnMap = {},
     customObjectMap = {},
     belongsTo = {},
     hasOne = {},
     hasMany = {},
-    customInheritanceOptions = MetaData.TableInheritance.NONE,
   }: MetaData.GenerateMetaDataOptions<T>) {
-    this.domainKey = domainKey;
-    const tableColumnsUsedByEmbeddedObject = customObjectMap.domainObjectFields
+    const tableColumnsUsedByManualObjectMap = customObjectMap.domainObjectFields
       ? Object.values(customObjectMap.domainObjectFields)
           .flatMap((obj) => Object.values(obj))
           .flatMap((obj) =>
@@ -32,6 +47,24 @@ export class MetaData {
           )
       : [];
 
+    const unneededColumns = new Set([
+      ...Object.keys(customColumnMap),
+      ...tableColumnsUsedByManualObjectMap,
+    ]);
+
+    this.setupImplicitColumnMap(Table, unneededColumns);
+
+    this.setupColumnMap(customColumnMap);
+
+    this.setupManualObjectMap(customObjectMap);
+
+    this.setupRelations(belongsTo, hasOne, hasMany);
+  }
+
+  private setupImplicitColumnMap<T extends typeof Table>(
+    Table: T,
+    unneededColumns: Set<string>
+  ) {
     for (const [columnName, _columnAttributes] of Object.entries(
       Table.columns
     )) {
@@ -42,17 +75,18 @@ export class MetaData {
       }
 
       // don't generate default column map if table column has its customized map
-      if (
-        columnName in customColumnMap ||
-        columnName in tableColumnsUsedByEmbeddedObject
-      ) {
+      if (unneededColumns.has(columnName)) {
         continue;
       }
 
       this.metadataFields.push(ColumnMap.usingColumn(columnName));
     }
     this.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
+  }
 
+  private setupColumnMap(
+    customColumnMap: Record<string, string | MetaData.FieldConversionOptions>
+  ) {
     for (const [tableColumnKey, value] of Object.entries(customColumnMap)) {
       if (typeof value === "string") {
         this.metadataFields.push(
@@ -72,13 +106,9 @@ export class MetaData {
         );
       }
     }
+  }
 
-    // if (embeddedObjectMap.conversionFunction) {
-    //   metadata.metadataFields.push(
-    //     new EmbeddedObjectMap(embeddedObjectMap.conversionFunction)
-    //   );
-    // }
-
+  private setupManualObjectMap(customObjectMap: MetaData.ManualObjectOptions) {
     if (customObjectMap.domainObjectFields) {
       for (const [domainFieldName, tableColumns] of Object.entries(
         customObjectMap.domainObjectFields
@@ -91,7 +121,13 @@ export class MetaData {
         );
       }
     }
+  }
 
+  private setupRelations(
+    belongsTo: Record<string, MetaData.RelationOptionsWithoutName>,
+    hasOne: Record<string, MetaData.RelationOptionsWithoutName>,
+    hasMany: Record<string, MetaData.RelationOptionsWithoutName>
+  ) {
     for (const [key, options] of Object.entries(belongsTo)) {
       this.belongsTo({ relationName: key, ...options });
     }
@@ -101,6 +137,30 @@ export class MetaData {
     for (const [key, options] of Object.entries(hasMany)) {
       this.hasMany({ relationName: key, ...options });
     }
+  }
+
+  private setupSingleTableInheritanceMap({
+    ParentMapper,
+  }: MetaData.SingleTableInheritanceOptions) {
+    if (ParentMapper) {
+      this.metadataFields.push(new SingleTableInheritanceMap(ParentMapper));
+    }
+  }
+
+  private generateSingleTableInheritanceMetaData<T extends typeof Table>({
+    Table,
+    customColumnMap = {},
+    customObjectMap = {},
+    belongsTo = {},
+    hasOne = {},
+    hasMany = {},
+    customInheritanceOptions,
+  }: MetaData.GenerateMetaDataOptions<T>) {
+    this.setupSingleTableInheritanceMap(
+      customInheritanceOptions as MetaData.SingleTableInheritanceOptions
+    );
+
+    this.setupColumnMap(customColumnMap);
   }
 
   belongsTo(options: MetaData.RelationOptions) {
@@ -252,4 +312,5 @@ export type AllMetadataFieldTypes =
   | ColumnMap
   | ForeignKeyMap
   | ManualObjectMap
-  | ManualColumnMap;
+  | ManualColumnMap
+  | SingleTableInheritanceMap;

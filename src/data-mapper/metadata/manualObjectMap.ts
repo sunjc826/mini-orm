@@ -57,6 +57,10 @@ export class ManualObjectMap extends AllMetadataField {
     });
   }
 
+  processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
+    this.conversionFunction(tableObj, domainObj);
+  }
+
   // TODO
   /**
    * Converts the serialized data referenced by the given table column to a domain field.

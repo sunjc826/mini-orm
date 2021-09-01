@@ -341,7 +341,7 @@ export abstract class DataMapper {
     resultSet: ResultSet<any>
   ) {
     const domainObjects = resultSet.map((row) => {
-      const tableColumnMap: Record<string, any> = {};
+      const tableColumnMap: Record<string, Record<string, any>> = {};
       let requestedDomainObj: T | null = null;
       for (const [column, value] of Object.entries(row)) {
         /**
@@ -367,58 +367,11 @@ export abstract class DataMapper {
 
         Mapper.metadata.metadataFields.forEach((metadataField) => {
           switch (metadataField.variant) {
-            case MetaDataObjectType.COLUMN_MAP: {
-              const { tableColumnKey, domainFieldName } = metadataField;
-              domainObj[domainFieldName] = tableObj[tableColumnKey];
-              break;
-            }
-            case MetaDataObjectType.FOREIGN_KEY_MAP: {
-              const { foreignKey, otherDomainKey, relationName, relationType } =
-                metadataField;
-              switch (relationType) {
-                case RelationType.BELONGS_TO: {
-                  domainObj[relationName] = getVirtualDomainObject({
-                    domainKey: otherDomainKey,
-                    knownId: tableObj[foreignKey],
-                    isSingle: true,
-                  });
-                  break;
-                }
-                case RelationType.HAS_ONE: {
-                  const query: Query = new Query(otherDomainKey);
-                  query.where({
-                    domainObjectField: foreignKey,
-                    value: tableObj["id"],
-                  });
-                  domainObj[relationName] = getVirtualDomainObject({
-                    domainKey: otherDomainKey,
-                    loader: query,
-                    isSingle: true,
-                  });
-                  break;
-                }
-                case RelationType.HAS_MANY: {
-                  const query: Query = new Query(otherDomainKey);
-                  query.where({
-                    domainObjectField: foreignKey,
-                    value: tableObj["id"],
-                  });
-                  domainObj[relationName] = getVirtualDomainObject({
-                    domainKey: otherDomainKey,
-                    loader: query,
-                    isSingle: false,
-                  });
-                  break;
-                }
-                default: {
-                  throw MetaDataErrors.UNEXPECTED_RELATION_TYPE;
-                }
-              }
-              break;
-            }
-            case MetaDataObjectType.MANUAL_OBJECT_MAP: {
-              const { conversionFunction } = metadataField;
-              conversionFunction(tableObj, domainObj);
+            case MetaDataObjectType.COLUMN_MAP:
+            case MetaDataObjectType.FOREIGN_KEY_MAP:
+            case MetaDataObjectType.MANUAL_OBJECT_MAP:
+            case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
+              metadataField.processObject(tableObj, domainObj);
               break;
             }
             case MetaDataObjectType.MANUAL_COLUMN_MAP: {
@@ -482,6 +435,7 @@ interface CreateMapperOptions<T extends typeof Table>
 export function createMapper<T extends typeof Table>({
   domainKey,
   Table,
+  customInheritanceOptions,
   ...metadataOptions
 }: CreateMapperOptions<T>) {
   // Table takes priority
@@ -489,24 +443,16 @@ export function createMapper<T extends typeof Table>({
   const Mapper = class extends DataMapper {
     static domainKey = domainKey;
   };
+
   Mapper.generateMetaData({
     domainKey,
     Table: TableClass,
     ...metadataOptions,
+    customInheritanceOptions,
   });
+
+  // if (customInheritanceOptions && customInheritanceOptions.variant === MetaData.TableInheritance.SINGLE_TABLE) {
+  // }
 
   return Mapper;
 }
-
-// export { Table, createTable } from "./table";
-// export { UnitOfWork } from "./unitOfWork";
-// export {
-//   AllMetadataField,
-//   AllMetadataFieldTypes,
-//   ColumnMap,
-//   ForeignKeyMap,
-//   JoinTableMap,
-//   MetaData,
-//   MetaDataObjectType,
-//   RelationType,
-// } from "./metadata";

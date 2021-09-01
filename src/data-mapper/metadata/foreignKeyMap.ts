@@ -1,5 +1,8 @@
 import { registry } from "../..";
+import { MetaDataErrors } from "../../errors";
 import { stripHasManyRelation, addIdToName } from "../../helpers";
+import { Query } from "../../repository/query";
+import { getVirtualDomainObject } from "../lazyLoad";
 import { MetaData } from "./metadata";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
@@ -93,6 +96,49 @@ export class ForeignKeyMap extends AllMetadataField {
   }
   matchByTable(tableColumnKey: string): boolean {
     return tableColumnKey === this.foreignKey;
+  }
+
+  processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
+    switch (this.relationType) {
+      case RelationType.BELONGS_TO: {
+        domainObj[this.relationName] = getVirtualDomainObject({
+          domainKey: this.otherDomainKey,
+          knownId: tableObj[this.foreignKey],
+          isSingle: true,
+        });
+        break;
+      }
+      case RelationType.HAS_ONE: {
+        const query: Query = new Query(this.otherDomainKey);
+        query.where({
+          domainObjectField: this.foreignKey,
+          value: tableObj["id"],
+        });
+        domainObj[this.relationName] = getVirtualDomainObject({
+          domainKey: this.otherDomainKey,
+          loader: query,
+          isSingle: true,
+        });
+        break;
+      }
+      case RelationType.HAS_MANY: {
+        const query: Query = new Query(this.otherDomainKey);
+        query.where({
+          domainObjectField: this.foreignKey,
+          value: tableObj["id"],
+        });
+        domainObj[this.relationName] = getVirtualDomainObject({
+          domainKey: this.otherDomainKey,
+          loader: query,
+          isSingle: false,
+        });
+        break;
+      }
+
+      default: {
+        throw MetaDataErrors.UNEXPECTED_RELATION_TYPE;
+      }
+    }
   }
 }
 

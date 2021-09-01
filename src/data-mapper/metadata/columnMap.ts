@@ -48,6 +48,10 @@ export class ColumnMap extends AllMetadataField {
   matchByTable(tableColumnKey: string): boolean {
     return this.tableColumnKey === tableColumnKey;
   }
+
+  processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
+    domainObj[this.domainFieldName] = tableObj[this.tableColumnKey];
+  }
 }
 
 export declare namespace ColumnMap {
