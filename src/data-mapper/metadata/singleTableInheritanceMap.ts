@@ -1,4 +1,5 @@
 import { DataMapper } from "..";
+import { Table } from "../table";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
 export class SingleTableInheritanceMap extends AllMetadataField {
@@ -12,10 +13,26 @@ export class SingleTableInheritanceMap extends AllMetadataField {
   }
 
   processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
-    this.ParentMapper.mapFields(tableObj, domainObj);
+    this.ParentMapper.mapColumnsToFields(tableObj, domainObj);
   }
 
-  findByDomain(domainField) {
-    return this.ParentMapper.metadata.findByDomain(domainField);
+  processInsertColumns(TableClass: typeof Table, columnArr: Array<string>) {
+    this.ParentMapper.fillInsertColumns(columnArr, TableClass);
+  }
+
+  async processInsertSql(
+    domainObj: Record<string, any>,
+    TableClass: typeof Table,
+    valueArr: Array<any>
+  ) {
+    return this.ParentMapper.mapFieldsToColumns(
+      domainObj,
+      valueArr,
+      TableClass
+    );
+  }
+
+  findByDomain(domainObjectField: string) {
+    return this.ParentMapper.metadata.findByDomain(domainObjectField);
   }
 }

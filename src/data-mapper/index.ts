@@ -8,13 +8,12 @@ import {
   brackets,
   dbColumnNameToColumnKey,
   extractDomainKeyFromTable,
+  quote,
   splitResultSetColumnName,
 } from "../helpers";
 import { Promisify } from "../helpers/types";
 import { log } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
-import { Query } from "../repository/query";
-import { getVirtualDomainObject } from "./lazyLoad";
 import { RelationType } from "./metadata/foreignKeyMap";
 import { AllMetadataFieldTypes, MetaData } from "./metadata/metadata";
 import { MetaDataObjectType } from "./metadata/types";
@@ -85,6 +84,7 @@ export abstract class DataMapper {
       return [];
     }
     const sql = await this.domainObjectToSql(objects);
+    log(sql);
     const idArr = (await (client || (await this.dbPool)).query(
       sql
     )) as ResultSet<T>;
@@ -226,8 +226,9 @@ export abstract class DataMapper {
   ): Promise<string> {
     const domainKey = (domainObjects[0].constructor as typeof DomainObject)
       .domainKey;
-    const Table = registry.getTable(domainKey);
-    const tableName = Table.tableName;
+    const TableClass = registry.getTable(domainKey);
+
+    const tableName = TableClass.tableName;
 
     const sqlColumnNamesPartArr: Array<string> = [];
     const sqlValuesPartArr: Array<Array<any>> = new Array(domainObjects.length);
@@ -235,94 +236,32 @@ export abstract class DataMapper {
       sqlValuesPartArr[i] = [];
     }
 
-    for (const metadataField of this.metadata.metadataFields) {
-      switch (metadataField.variant) {
-        case MetaDataObjectType.COLUMN_MAP: {
-          const { tableColumnKey } = metadataField;
-          if (tableColumnKey === ID_COLUMN_NAME) {
-            continue;
-          }
-          const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
-          sqlColumnNamesPartArr.push(actualDbColumnName);
-          break;
-        }
-        case MetaDataObjectType.FOREIGN_KEY_MAP: {
-          const { foreignKey, relationType } = metadataField;
-          if (relationType === RelationType.BELONGS_TO) {
-            const actualDbColumnName = Table.getDbColumnName(foreignKey);
-            sqlColumnNamesPartArr.push(actualDbColumnName);
-          }
-          break;
-        }
-        case MetaDataObjectType.MANUAL_OBJECT_MAP: {
-          // not needed
-          break;
-        }
-        case MetaDataObjectType.MANUAL_COLUMN_MAP: {
-          const { tableColumnKey } = metadataField;
-          const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
+    this.fillInsertColumns(sqlColumnNamesPartArr, TableClass);
 
-          sqlColumnNamesPartArr.push(actualDbColumnName);
-          break;
-        }
-        default: {
-          throw MetaDataErrors.UNEXPECTED_TYPE;
-        }
-      }
-    }
     outer: for (const metadataField of this.metadata.metadataFields) {
       // foreach doesn't work well with async logic that I want to run sequentially
       for (let i = 0; i < domainObjects.length; i++) {
         const domainObj = domainObjects[i] as Record<string, any>;
-        switch (metadataField.variant) {
-          case MetaDataObjectType.COLUMN_MAP: {
-            const { domainFieldName, tableColumnKey } = metadataField;
-            if (tableColumnKey === ID_COLUMN_NAME) {
-              continue outer;
-            }
-
-            sqlValuesPartArr[i].push(
-              Table.convertColumnValueToSqlString(
-                tableColumnKey,
-                domainObj[domainFieldName]
-              )
-            );
-            break;
-          }
-          case MetaDataObjectType.FOREIGN_KEY_MAP: {
-            const { relationName, relationType } = metadataField;
-            if (relationType === RelationType.BELONGS_TO) {
-              // the reason why we use await here is that the object
-              // may be a virtual proxy (for which await is needed) or a regular object.
-              sqlValuesPartArr[i].push(
-                await (domainObj[relationName] as Promisify<DomainObject>).id
-              );
-            }
-            break;
-          }
-          case MetaDataObjectType.MANUAL_OBJECT_MAP: {
-            // not needed
-            break;
-          }
-          case MetaDataObjectType.MANUAL_COLUMN_MAP: {
-            const {
-              tableColumnKey,
-              fieldConversionFunction: conversionFunction,
-            } = metadataField;
-            sqlValuesPartArr[i].push(
-              Table.convertColumnValueToSqlString(
-                tableColumnKey,
-                conversionFunction(domainObj)
-              )
-            );
-            break;
-          }
-          default: {
-            throw new Error("unexpected metadata object type");
-          }
+        if (
+          metadataField.variant === MetaDataObjectType.COLUMN_MAP &&
+          metadataField.tableColumnKey === ID_COLUMN_NAME
+        ) {
+          continue outer;
         }
+        await this.mapToColumn(
+          metadataField,
+          domainObj,
+          sqlValuesPartArr[i],
+          TableClass
+        );
       }
     }
+
+    if (TableClass.isUsingSingleTableInheritance) {
+      sqlColumnNamesPartArr.push(TableClass.getSingleTableInheritanceColumn());
+      sqlValuesPartArr.forEach((arr) => arr.push(quote(domainKey, "STI")));
+    }
+
     const sqlColumnNamesPart = brackets(sqlColumnNamesPartArr.join(","));
     const sqlValuesPart = sqlValuesPartArr
       .map((arr) => brackets(arr.join(", ")))
@@ -332,6 +271,94 @@ export abstract class DataMapper {
     RETURNING ${ID_COLUMN_NAME}
     ;`;
     return sql;
+  }
+
+  static fillInsertColumns(columnArr: Array<string>, TableClass: typeof Table) {
+    for (const metadataField of this.metadata.metadataFields) {
+      this.fillInsertColumn(metadataField, columnArr, TableClass);
+    }
+  }
+
+  static fillInsertColumn(
+    metadataField: AllMetadataFieldTypes,
+    columnArr: Array<string>,
+    TableClass: typeof Table
+  ) {
+    switch (metadataField.variant) {
+      case MetaDataObjectType.COLUMN_MAP: {
+        const { tableColumnKey } = metadataField;
+        if (tableColumnKey === ID_COLUMN_NAME) {
+          return;
+        }
+        metadataField.processInsertColumns(TableClass, columnArr);
+        break;
+      }
+      case MetaDataObjectType.FOREIGN_KEY_MAP: {
+        metadataField.processInsertColumns(TableClass, columnArr);
+        break;
+      }
+      case MetaDataObjectType.MANUAL_OBJECT_MAP: {
+        // not needed
+        break;
+      }
+      case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+        metadataField.processInsertColumns(TableClass, columnArr);
+        break;
+      }
+      case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
+        metadataField.processInsertColumns(TableClass, columnArr);
+        break;
+      }
+      default: {
+        throw MetaDataErrors.UNEXPECTED_TYPE;
+      }
+    }
+  }
+
+  static async mapFieldsToColumns(
+    domainObj: Record<string, any>,
+    valueArr: Array<any>,
+    TableClass: typeof Table
+  ) {
+    for (const field of this.metadata.metadataFields) {
+      await this.mapToColumn(field, domainObj, valueArr, TableClass);
+    }
+  }
+
+  static async mapToColumn(
+    metadataField: AllMetadataFieldTypes,
+    domainObj: Record<string, any>,
+    valueArr: Array<any>,
+    TableClass: typeof Table
+  ) {
+    switch (metadataField.variant) {
+      case MetaDataObjectType.COLUMN_MAP: {
+        if (metadataField.tableColumnKey === ID_COLUMN_NAME) {
+          return;
+        }
+        metadataField.processInsertSql(domainObj, TableClass, valueArr);
+        break;
+      }
+      case MetaDataObjectType.FOREIGN_KEY_MAP: {
+        await metadataField.processInsertSql(domainObj, valueArr);
+        break;
+      }
+      case MetaDataObjectType.MANUAL_OBJECT_MAP: {
+        // not needed
+        break;
+      }
+      case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+        metadataField.processInsertSql(domainObj, TableClass, valueArr);
+        break;
+      }
+      case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
+        await metadataField.processInsertSql(domainObj, TableClass, valueArr);
+        break;
+      }
+      default: {
+        throw new Error("unexpected metadata object type");
+      }
+    }
   }
 
   /**
@@ -366,9 +393,9 @@ export abstract class DataMapper {
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
 
-        Mapper.mapFields(tableObj, domainObj);
+        Mapper.mapColumnsToFields(tableObj, domainObj);
         const actualDomainObj = new DomainObj(domainObj);
-        log(actualDomainObj, domainKey, this.domainKey);
+        // log(actualDomainObj, domainKey, this.domainKey);
         registry.unitOfWork.registerClean({
           domainKey,
           domainObject: actualDomainObj,
@@ -389,17 +416,17 @@ export abstract class DataMapper {
   }
 
   // Note: domainObj is meant to be mutated.
-  static mapFields(
+  static mapColumnsToFields(
     tableObj: Record<string, any>,
     domainObj: Record<string, any>
   ) {
     this.metadata.metadataFields.forEach((metadataField) => {
-      this.mapField(metadataField, tableObj, domainObj);
+      this.mapToField(metadataField, tableObj, domainObj);
     });
   }
 
   // Note: domainObj is meant to be mutated.
-  static mapField(
+  static mapToField(
     metadataField: AllMetadataFieldTypes,
     tableObj: Record<string, any>,
     domainObj: Record<string, any>
@@ -469,9 +496,6 @@ export function createMapper<T extends typeof Table>({
     ...metadataOptions,
     customInheritanceOptions,
   });
-
-  // if (customInheritanceOptions && customInheritanceOptions.variant === MetaData.TableInheritance.SINGLE_TABLE) {
-  // }
 
   return Mapper;
 }

@@ -1,5 +1,6 @@
 import {
   AnyFunction,
+  Constructor,
   OwnKeyValues,
   Promisify,
   PromisifyArray,
@@ -7,6 +8,7 @@ import {
 } from "../helpers/types";
 import { registry } from "../registry";
 import { getRepoProxy, Repo } from "../repository";
+import { DomainObjectConstructor } from "./types";
 
 // unfortunately I can't keep the abstract keyword here since I would like to have factory methods
 // another option is to define it on the NewDomainObject class defined below but that would mean having
@@ -71,8 +73,11 @@ interface CreateDomainObjectOptions {
   domainKey: string;
 }
 
-interface ExtendDomainObjectOptions extends CreateDomainObjectOptions {
-  ParentDomainObject: typeof DomainObject;
+interface ExtendDomainObjectOptions<
+  T extends DomainObject,
+  U extends typeof DomainObject
+> extends CreateDomainObjectOptions {
+  ParentDomainObject: DomainObjectConstructor<T, U>;
 }
 
 export function createDomainObject({
@@ -104,10 +109,10 @@ export function createDomainObject({
   }) as any as typeof DomainObject & Repo;
 }
 
-export function extendDomainObject({
-  domainKey,
-  ParentDomainObject,
-}: ExtendDomainObjectOptions) {
+export function extendDomainObject<
+  T extends DomainObject,
+  U extends typeof DomainObject
+>({ domainKey, ParentDomainObject }: ExtendDomainObjectOptions<T, U>) {
   const NewDomainObject = class extends ParentDomainObject {
     static domainKey = domainKey;
   };

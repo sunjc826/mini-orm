@@ -5,7 +5,7 @@ import {
   generateSingleTableInheritanceColumn,
 } from "../helpers";
 import { FirstParam } from "../helpers/types";
-import { write } from "../lib-test/tests/helpers";
+import { log, write } from "../lib-test/tests/helpers";
 import {
   DataTypes,
   AllOptions,
@@ -48,6 +48,8 @@ export abstract class Table {
   static foreignKeys: Record<string, string> = {};
   // TODO
   static referencedByKeys = {};
+
+  static isUsingSingleTableInheritance = false;
 
   // TODO: Can also implement table constraints in future
 
@@ -158,6 +160,7 @@ export abstract class Table {
   }
 
   static enableSingleTableInheritance() {
+    this.isUsingSingleTableInheritance = true;
     this.addColumns({
       [generateSingleTableInheritanceColumn(this.tableName)]: {
         type: "text",
@@ -166,6 +169,12 @@ export abstract class Table {
         },
       },
     });
+  }
+
+  static getSingleTableInheritanceColumn() {
+    return this.getDbColumnName(
+      generateSingleTableInheritanceColumn(this.tableName)
+    );
   }
 
   static toSqlCreate(): string {

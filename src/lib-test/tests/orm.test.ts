@@ -279,4 +279,15 @@ test("single table inheritance select", async () => {
   await pool.query(PlayerTest.insertSql);
   const footballer = await Footballer.findById<Footballer>(1);
   expect(footballer).toBeDefined();
+  expect(footballer?.name).toEqual("Johnson");
+  expect(footballer?.club).toEqual("ClubX");
+});
+
+test("single table inheritance insert", async () => {
+  Footballer.create<Footballer>({ name: "TestFootballer", club: "TestClub" });
+  await DomainObject.commit();
+  const footballer = await Footballer.findById<Footballer>(1);
+  expect(footballer).toBeDefined();
+  expect(footballer?.name).toEqual("TestFootballer");
+  expect(footballer?.club).toEqual("TestClub");
 });

@@ -1,3 +1,4 @@
+import { Table } from "../table";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
 /**
@@ -51,6 +52,24 @@ export class ColumnMap extends AllMetadataField {
 
   processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
     domainObj[this.domainFieldName] = tableObj[this.tableColumnKey];
+  }
+
+  processInsertColumns(TableClass: typeof Table, columnArr: Array<string>) {
+    const actualDbColumnName = TableClass.getDbColumnName(this.tableColumnKey);
+    columnArr.push(actualDbColumnName);
+  }
+
+  processInsertSql(
+    domainObj: Record<string, any>,
+    TableClass: typeof Table,
+    valueArr: Array<any>
+  ) {
+    valueArr.push(
+      TableClass.convertColumnValueToSqlString(
+        this.tableColumnKey,
+        domainObj[this.domainFieldName]
+      )
+    );
   }
 }
 

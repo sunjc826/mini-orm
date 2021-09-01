@@ -1,8 +1,10 @@
-import { registry } from "../..";
+import { DomainObject, registry } from "../..";
 import { MetaDataErrors } from "../../errors";
 import { stripHasManyRelation, addIdToName } from "../../helpers";
+import { Promisify } from "../../helpers/types";
 import { Query } from "../../repository/query";
 import { getVirtualDomainObject } from "../lazyLoad";
+import { Table } from "../table";
 import { MetaData } from "./metadata";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
@@ -138,6 +140,23 @@ export class ForeignKeyMap extends AllMetadataField {
       default: {
         throw MetaDataErrors.UNEXPECTED_RELATION_TYPE;
       }
+    }
+  }
+
+  processInsertColumns(TableClass: typeof Table, columnArr: Array<string>) {
+    if (this.relationType === RelationType.BELONGS_TO) {
+      const actualDbColumnName = TableClass.getDbColumnName(this.foreignKey);
+      columnArr.push(actualDbColumnName);
+    }
+  }
+
+  async processInsertSql(domainObj: Record<string, any>, valueArr: Array<any>) {
+    if (this.relationType === RelationType.BELONGS_TO) {
+      // the reason why we use await here is that the object
+      // may be a virtual proxy (for which await is needed) or a regular object.
+      valueArr.push(
+        await (domainObj[this.relationName] as Promisify<DomainObject>).id
+      );
     }
   }
 }

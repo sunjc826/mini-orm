@@ -1,3 +1,4 @@
+import { Table } from "../table";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
 /**
@@ -22,6 +23,24 @@ export class ManualColumnMap extends AllMetadataField {
 
   matchByTable(tableColumnKey: string): boolean {
     return this.tableColumnKey === tableColumnKey;
+  }
+
+  processInsertColumns(TableClass: typeof Table, columnArr: Array<string>) {
+    const actualDbColumnName = TableClass.getDbColumnName(this.tableColumnKey);
+    columnArr.push(actualDbColumnName);
+  }
+
+  processInsertSql(
+    domainObj: Record<string, any>,
+    TableClass: typeof Table,
+    valueArr: Array<any>
+  ) {
+    valueArr.push(
+      TableClass.convertColumnValueToSqlString(
+        this.tableColumnKey,
+        this.fieldConversionFunction(domainObj)
+      )
+    );
   }
 }
 
