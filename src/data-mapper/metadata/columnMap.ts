@@ -71,6 +71,22 @@ export class ColumnMap extends AllMetadataField {
       )
     );
   }
+
+  processUpdateSql(
+    domainObj: Record<string, any>,
+    TableClass: typeof Table,
+    sqlArr: Array<string>
+  ) {
+    if (!domainObj.dirtied.has(this.domainFieldName)) {
+      return;
+    }
+    const actualDbColumnName = TableClass.getDbColumnName(this.tableColumnKey);
+    sqlArr.push(`${actualDbColumnName}=
+      ${TableClass.convertColumnValueToSqlString(
+        this.tableColumnKey,
+        domainObj[this.domainFieldName]
+      )}`);
+  }
 }
 
 export declare namespace ColumnMap {

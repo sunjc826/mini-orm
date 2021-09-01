@@ -1,3 +1,4 @@
+import { Table } from "../table";
 import { MetaData } from "./metadata";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 // TODO: Another possible extension to embedded object map is serialized large object.

@@ -32,6 +32,18 @@ export class SingleTableInheritanceMap extends AllMetadataField {
     );
   }
 
+  async processUpdateSql(
+    domainObject: Record<string, any>,
+    TableClass: typeof Table,
+    sqlArr: Array<string>
+  ) {
+    return this.ParentMapper.fillUpdateColumns(
+      domainObject,
+      TableClass,
+      sqlArr
+    );
+  }
+
   findByDomain(domainObjectField: string) {
     return this.ParentMapper.metadata.findByDomain(domainObjectField);
   }

@@ -159,6 +159,25 @@ export class ForeignKeyMap extends AllMetadataField {
       );
     }
   }
+
+  async processUpdateSql(
+    domainObject: Record<string, any>,
+    TableClass: typeof Table,
+    sqlArr: Array<string>
+  ) {
+    if (this.relationType === RelationType.BELONGS_TO) {
+      if (!domainObject.dirtied.has(this.relationName)) {
+        return;
+      }
+      const actualDbColumnName = TableClass.getDbColumnName(this.foreignKey);
+
+      // the reason why we use await here is that the object
+      // may be a virtual proxy (for which await is needed) or a regular object.
+      sqlArr.push(`${actualDbColumnName}=
+        ${await (domainObject[this.relationName] as Promisify<DomainObject>).id}
+      `);
+    }
+  }
 }
 
 export declare namespace ForeignKeyMap {

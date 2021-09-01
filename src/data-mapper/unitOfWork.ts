@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { PoolClient } from "pg";
 import { DataMapper } from ".";
+import { DbClient } from "../connection/connect";
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
 
@@ -99,7 +100,7 @@ export class UnitOfWork {
     }
   }
 
-  private async insertNew(client: PoolClient) {
+  private async insertNew(client: DbClient) {
     const sorted = registry.getCorrectInsertOrder();
     for (const domainKey of sorted) {
       const idArr = await registry
@@ -111,7 +112,7 @@ export class UnitOfWork {
     }
   }
 
-  private async updateDirty(client: PoolClient) {
+  private async updateDirty(client: DbClient) {
     for (const domainKey of Object.keys(this.dirtyObjects)) {
       await registry
         .getMapper(domainKey)
@@ -120,7 +121,7 @@ export class UnitOfWork {
     }
   }
 
-  private async deleteRemoved(client: PoolClient) {
+  private async deleteRemoved(client: DbClient) {
     const sorted = registry.getCorrectDeleteOrder();
     for (const domainKey of sorted) {
       await registry

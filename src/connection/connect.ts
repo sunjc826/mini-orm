@@ -8,6 +8,29 @@ interface Query {
   values: any[];
 }
 
+export class DbClient {
+  logGeneratedSql: boolean;
+  client: PoolClient;
+
+  constructor(client: PoolClient, logGeneratedSql: boolean) {
+    this.client = client;
+    this.logGeneratedSql = logGeneratedSql;
+  }
+
+  async query(queryText: string, values?: any[]): Promise<ResultSet<any>> {
+    if (this.logGeneratedSql) {
+      write(queryText, "sql", true);
+    }
+    write(queryText, "sql", false);
+    const result = await this.client.query(queryText, values);
+    return result.rows;
+  }
+
+  async release() {
+    return this.client.release();
+  }
+}
+
 export class DbPool {
   config: ClientConfig;
   pool: Pool;
@@ -19,10 +42,10 @@ export class DbPool {
     this.logGeneratedSql = logGeneratedSql;
   }
 
-  async getClient(): Promise<PoolClient | null> {
+  async getClient(): Promise<DbClient | null> {
     try {
       const client = await this.pool.connect();
-      return client;
+      return new DbClient(client, this.logGeneratedSql);
     } catch (err) {
       console.error("connection error", err);
       return null;

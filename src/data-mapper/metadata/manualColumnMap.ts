@@ -42,6 +42,33 @@ export class ManualColumnMap extends AllMetadataField {
       )
     );
   }
+
+  processUpdateSql(
+    domainObject: Record<string, any>,
+    TableClass: typeof Table,
+    sqlArr: Array<string>
+  ) {
+    const actualDbColumnName = TableClass.getDbColumnName(this.tableColumnKey);
+    const dependencies =
+      typeof this.domainObjectFields === "string"
+        ? [this.domainObjectFields]
+        : this.domainObjectFields;
+    let requiresUpdate = false;
+    for (const dependency of dependencies) {
+      if (domainObject.dirtied.has(dependency)) {
+        requiresUpdate = true;
+        break;
+      }
+    }
+    if (!requiresUpdate) {
+      return;
+    }
+    sqlArr.push(`${actualDbColumnName}=
+              ${TableClass.convertColumnValueToSqlString(
+                this.tableColumnKey,
+                this.fieldConversionFunction(domainObject)
+              )}`);
+  }
 }
 
 export declare namespace ManualColumnMap {
