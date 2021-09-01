@@ -4,7 +4,7 @@ import { FOOTBALLER } from "../../domainKeys";
 import { PersonTable } from "../../tables/person";
 import { PlayerMapper } from "./player";
 
-export const Footballer = createMapper({
+export const FootballerMapper = createMapper({
   domainKey: FOOTBALLER,
   Table: PersonTable,
   customInheritanceOptions: {

@@ -95,3 +95,7 @@ export function addIdToName(relationName: string) {
 export function stripHasManyRelation(relationName: string) {
   return relationName.replace(/s$/, "");
 }
+
+export function generateSingleTableInheritanceColumn(tableName: string) {
+  return `${tableName}Type`;
+}

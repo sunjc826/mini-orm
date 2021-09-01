@@ -11,11 +11,12 @@ import {
   splitResultSetColumnName,
 } from "../helpers";
 import { Promisify } from "../helpers/types";
+import { log } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
 import { Query } from "../repository/query";
 import { getVirtualDomainObject } from "./lazyLoad";
 import { RelationType } from "./metadata/foreignKeyMap";
-import { MetaData } from "./metadata/metadata";
+import { AllMetadataFieldTypes, MetaData } from "./metadata/metadata";
 import { MetaDataObjectType } from "./metadata/types";
 import { Table } from "./table";
 import { ID_COLUMN_NAME } from "./types";
@@ -38,8 +39,8 @@ export abstract class DataMapper {
    */
   static async createTables() {
     let sql = "";
-    for (const { _Table } of Object.values(registry.registry)) {
-      sql += _Table.toSqlCreate();
+    for (const Table of registry.getDbTables()) {
+      sql += Table.toSqlCreate();
     }
 
     return (await this.dbPool).query(sql);
@@ -365,25 +366,9 @@ export abstract class DataMapper {
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
 
-        Mapper.metadata.metadataFields.forEach((metadataField) => {
-          switch (metadataField.variant) {
-            case MetaDataObjectType.COLUMN_MAP:
-            case MetaDataObjectType.FOREIGN_KEY_MAP:
-            case MetaDataObjectType.MANUAL_OBJECT_MAP:
-            case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
-              metadataField.processObject(tableObj, domainObj);
-              break;
-            }
-            case MetaDataObjectType.MANUAL_COLUMN_MAP: {
-              // not needed
-              break;
-            }
-            default: {
-              throw MetaDataErrors.UNEXPECTED_TYPE;
-            }
-          }
-        });
+        Mapper.mapFields(tableObj, domainObj);
         const actualDomainObj = new DomainObj(domainObj);
+        log(actualDomainObj, domainKey, this.domainKey);
         registry.unitOfWork.registerClean({
           domainKey,
           domainObject: actualDomainObj,
@@ -401,6 +386,40 @@ export abstract class DataMapper {
       return requestedDomainObj;
     });
     return domainObjects;
+  }
+
+  // Note: domainObj is meant to be mutated.
+  static mapFields(
+    tableObj: Record<string, any>,
+    domainObj: Record<string, any>
+  ) {
+    this.metadata.metadataFields.forEach((metadataField) => {
+      this.mapField(metadataField, tableObj, domainObj);
+    });
+  }
+
+  // Note: domainObj is meant to be mutated.
+  static mapField(
+    metadataField: AllMetadataFieldTypes,
+    tableObj: Record<string, any>,
+    domainObj: Record<string, any>
+  ) {
+    switch (metadataField.variant) {
+      case MetaDataObjectType.COLUMN_MAP:
+      case MetaDataObjectType.FOREIGN_KEY_MAP:
+      case MetaDataObjectType.MANUAL_OBJECT_MAP:
+      case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
+        metadataField.processObject(tableObj, domainObj);
+        break;
+      }
+      case MetaDataObjectType.MANUAL_COLUMN_MAP: {
+        // not needed
+        break;
+      }
+      default: {
+        throw MetaDataErrors.UNEXPECTED_TYPE;
+      }
+    }
   }
 }
 

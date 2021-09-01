@@ -9,6 +9,7 @@ interface RegistryItem {
   _Table: typeof Table;
   _DomainObject: Constructor<DomainObject>;
   _DataMapper: typeof DataMapper;
+  singleTableInheritance: boolean;
 }
 
 /**
@@ -36,12 +37,14 @@ class Registry {
     domainKey: string,
     _Table: T,
     _DomainObject: Constructor<D>,
-    _DataMapper: M
+    _DataMapper: M,
+    singleTableInheritance: boolean = false
   ) {
     this.registry[domainKey] = {
       _Table,
       _DomainObject,
       _DataMapper,
+      singleTableInheritance,
     };
     this.tableNameToDomainKey[_Table.tableName] = domainKey;
     this.unitOfWork.register(domainKey);
@@ -51,30 +54,36 @@ class Registry {
     return Object.keys(this.registry);
   }
 
-  registerTable<T extends typeof Table>(domainKey: string, _Table: T) {
-    this.registry[domainKey]._Table = _Table;
-    this.tableNameToDomainKey[_Table.tableName] = domainKey;
-    this.unitOfWork.register(domainKey);
-  }
+  // registerTable<T extends typeof Table>(domainKey: string, _Table: T) {
+  //   this.registry[domainKey]._Table = _Table;
+  //   this.tableNameToDomainKey[_Table.tableName] = domainKey;
+  //   this.unitOfWork.register(domainKey);
+  // }
 
-  registerDomainObject<D extends DomainObject>(
-    domainKey: string,
-    _DomainObject: Constructor<D>
-  ) {
-    this.registry[domainKey]._DomainObject = _DomainObject;
-    this.unitOfWork.register(domainKey);
-  }
+  // registerDomainObject<D extends DomainObject>(
+  //   domainKey: string,
+  //   _DomainObject: Constructor<D>
+  // ) {
+  //   this.registry[domainKey]._DomainObject = _DomainObject;
+  //   this.unitOfWork.register(domainKey);
+  // }
 
-  registerDataMapper<M extends typeof DataMapper>(
-    domainKey: string,
-    _DataMapper: M
-  ) {
-    this.registry[domainKey]._DataMapper = _DataMapper;
-    this.unitOfWork.register(domainKey);
-  }
+  // registerDataMapper<M extends typeof DataMapper>(
+  //   domainKey: string,
+  //   _DataMapper: M
+  // ) {
+  //   this.registry[domainKey]._DataMapper = _DataMapper;
+  //   this.unitOfWork.register(domainKey);
+  // }
 
   getTable<T extends typeof Table>(domainKey: string) {
     return this.registry[domainKey]?._Table as T;
+  }
+
+  getDbTables() {
+    return Object.values(this.registry)
+      .filter((ele) => !ele.singleTableInheritance)
+      .map((ele) => ele._Table);
   }
 
   getDomainKeyFromTableName(dbTableName: string) {

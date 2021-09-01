@@ -71,11 +71,16 @@ interface CreateDomainObjectOptions {
   domainKey: string;
 }
 
+interface ExtendDomainObjectOptions extends CreateDomainObjectOptions {
+  ParentDomainObject: typeof DomainObject;
+}
+
 export function createDomainObject({
   domainKey,
 }: CreateDomainObjectOptions): typeof DomainObject & Repo {
-  const NewDomainObject = class extends DomainObject {};
-  NewDomainObject.domainKey = domainKey;
+  const NewDomainObject = class extends DomainObject {
+    static domainKey = domainKey;
+  };
   return new Proxy(NewDomainObject, {
     get(target, prop, receiver) {
       // check if found in domain object first
@@ -89,7 +94,7 @@ export function createDomainObject({
       // otherwise, delegate to repo
       const RepoProxy = getRepoProxy();
       if (!RepoProxy.isQueryExists()) {
-        RepoProxy.newQuery(target.domainKey);
+        RepoProxy.newQuery(receiver.domainKey);
       }
       const value = Reflect.get(RepoProxy, prop);
       return typeof value === "function"
@@ -97,6 +102,16 @@ export function createDomainObject({
         : value;
     },
   }) as any as typeof DomainObject & Repo;
+}
+
+export function extendDomainObject({
+  domainKey,
+  ParentDomainObject,
+}: ExtendDomainObjectOptions) {
+  const NewDomainObject = class extends ParentDomainObject {
+    static domainKey = domainKey;
+  };
+  return NewDomainObject as typeof ParentDomainObject & Repo;
 }
 
 export type BelongsTo<T extends DomainObject> = Promisify<T>;

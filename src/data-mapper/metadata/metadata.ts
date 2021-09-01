@@ -144,6 +144,8 @@ export class MetaData {
   }: MetaData.SingleTableInheritanceOptions) {
     if (ParentMapper) {
       this.metadataFields.push(new SingleTableInheritanceMap(ParentMapper));
+    } else {
+      this.metadataFields.push(ColumnMap.usingColumn(ID_COLUMN_NAME));
     }
   }
 
@@ -198,17 +200,28 @@ export class MetaData {
   }
 
   findByDomain(domainObjectField: string): AllMetadataFieldTypes | null {
-    return (
-      this.metadataFields
-        .filter(
-          (field) =>
-            field.variant === MetaDataObjectType.COLUMN_MAP ||
-            field.variant === MetaDataObjectType.FOREIGN_KEY_MAP
-        )
-        .find((field) =>
-          (field as ColumnMap | ForeignKeyMap).matchByDomain(domainObjectField)
-        ) || null
-    );
+    for (const metadataField of this.metadataFields) {
+      switch (metadataField.variant) {
+        case MetaDataObjectType.COLUMN_MAP:
+        case MetaDataObjectType.FOREIGN_KEY_MAP: {
+          if (metadataField.matchByDomain(domainObjectField)) {
+            return metadataField;
+          }
+          break;
+        }
+        case MetaDataObjectType.SINGLE_TABLE_INHERITANCE_MAP: {
+          const result = metadataField.findByDomain(domainObjectField);
+          if (result) {
+            return result;
+          }
+          break;
+        }
+        default: {
+          // do nothing
+        }
+      }
+    }
+    return null;
   }
 
   findByTable(tableColumnKey: string): AllMetadataFieldTypes | null {

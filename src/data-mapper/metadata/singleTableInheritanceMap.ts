@@ -11,8 +11,11 @@ export class SingleTableInheritanceMap extends AllMetadataField {
     this.ParentMapper = ParentMapper;
   }
 
-  processObject(
-    tableObj: Record<string, any>,
-    domainObj: Record<string, any>
-  ) {}
+  processObject(tableObj: Record<string, any>, domainObj: Record<string, any>) {
+    this.ParentMapper.mapFields(tableObj, domainObj);
+  }
+
+  findByDomain(domainField) {
+    return this.ParentMapper.metadata.findByDomain(domainField);
+  }
 }

@@ -1,5 +1,9 @@
 import _ from "lodash";
-import { formatDbColumn, formatResultSetColumnName } from "../helpers";
+import {
+  formatDbColumn,
+  formatResultSetColumnName,
+  generateSingleTableInheritanceColumn,
+} from "../helpers";
 import { FirstParam } from "../helpers/types";
 import { write } from "../lib-test/tests/helpers";
 import {
@@ -153,6 +157,17 @@ export abstract class Table {
     return this.foreignKeys[tableColumnKey] || null;
   }
 
+  static enableSingleTableInheritance() {
+    this.addColumns({
+      [generateSingleTableInheritanceColumn(this.tableName)]: {
+        type: "text",
+        options: {
+          nullable: false,
+        },
+      },
+    });
+  }
+
   static toSqlCreate(): string {
     const innerSqlArr = [];
     for (const [_columnKey, column] of Object.entries(this.columns)) {
@@ -228,11 +243,13 @@ declare namespace Table {
 interface CreateTableOptions {
   tableName: string;
   columns: FirstParam<typeof Table["addColumns"]>;
+  singleTableInheritance?: boolean;
 }
 
 export function createTable({
   tableName: dbTableName,
   columns,
+  singleTableInheritance = false,
 }: CreateTableOptions) {
   const NewTable = class extends Table {
     /**
@@ -263,24 +280,9 @@ export function createTable({
 
     static foreignKeys: Record<string, string> = {};
   };
-  // const NewTableProxy = new Proxy(NewTable, {
-  //   get(target, prop, _receiver) {
-  //     if (prop in Object.getOwnPropertyNames(target)) {
-  //
-  //       return Reflect.get(target, prop);
-  //     }
-  //     const value = Reflect.get(target, prop);
-  //     if (typeof value === "function") {
-  //
-  //       return value.bind(target);
-  //     }
-  //     // typeof value is not a function
-  //     // we also assume that the target value is an object (for now)
-  //     Reflect.set(target, prop, {});
-  //
-  //     return Reflect.get(target, prop);
-  //   },
-  // });
   NewTable.addColumns(columns);
+  if (singleTableInheritance) {
+    NewTable.enableSingleTableInheritance();
+  }
   return NewTable;
 }
