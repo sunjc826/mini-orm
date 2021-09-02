@@ -7,7 +7,10 @@
     "start": "ts-node ./src/index.ts",
     "dev": "ts-node-transpile-only ./src/index.ts",
     "test": "jest --verbose=true",
-    "test-join": "jest --verbose=true --testNamePattern=join"
+    "test-join": "jest --verbose=true --testNamePattern=join",
+    "preversion": "npm test",
+    "version": "git add .",
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
