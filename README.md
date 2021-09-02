@@ -82,6 +82,91 @@ We will declare this association to the registry and register this triplet by th
 registry.register("author", AuthorTable, Author, AuthorMapper);
 ```
 
+### Using the models
+After defining the **table**, **data mapper** and **domain object**, you can generally forget about the former two. Most interactions should only involve the **domain object**.
+
+The basic CRUD operations are as follows.
+
+#### Query
+Queries are done in an ActiveRecord sort of manner, though the underlying pattern is that of a datamapper. 
+
+```typescript
+/**
+ * Search by id
+ */
+// due to typescript limitations, typescript will not known that this
+// returns an instance of author
+let author = await Author.findById(1);
+// tell typescript that you are getting an author
+author = await Author.findById<Author>(1);
+
+/**
+ * Search by other sql conditions
+ */
+// if you do not specify an operator, it will default to equals
+author = (await Author.find({
+    domainObjectField: "name",
+    value: "TestAuthor",
+}).exec()) as Author;
+```
+
+#### Insert
+Inserts are done using a `create` method available on every domain object class.
+
+```typescript
+/**
+ * Creates an author with name 'TestAuthor' and age 30
+ */
+// This is perfectly fine in terms of runtime, but Typescript
+// does not know that you are trying to create an Author.
+Author.create({ name: "TestAuthor", age: 30 });
+// Do this instead.
+// Now, Typescript will provide autocomplete suggestions 
+// for instance attributes like name that are defined on Author.
+Author.create<Author>({ name: "TestAuthor", age: 30 });
+
+/**
+ * This is needed to save your newly created object to the database.
+ */
+await DomainObject.commit();
+// You can do this.
+await Author.commit();
+// or this.
+await AnyOtherClassInheritingFromDomainObject.commit();
+```
+
+#### Update
+
+```typescript
+/**
+ * Updates author's age attribute to 55.
+ */
+// Like above, providing the generic type <Author> makes Typescript happy,
+// plus you get autocomplete suggestions.
+author.update<Author>({ age: 55 });
+
+/**
+ * Like insert, this is needed for database persistence.
+ */
+await DomainObject.commit();
+```
+
+#### Delete
+
+```typescript
+/**
+ * Deletes author.
+ */
+author.destroy();
+
+/**
+ * Like insert and update, this is needed for database persistence.
+ */
+await DomainObject.commit();
+```
+
+#### Commit
+You can chain a bunch of inserts, updates and deletes before calling `commit`, which will notify the database of these changes in a single transaction.
 
 ## Documentation
 
