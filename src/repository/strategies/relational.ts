@@ -3,7 +3,11 @@ import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
 import { CriterionObject, JoinObject, Query } from "../query";
-import { GetInner, RepositoryStrategy } from "../types";
+import {
+  ArrayifyIfNotArray,
+  GetArrayInner,
+  RepositoryStrategy,
+} from "../types";
 
 export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   currentQuery: Query | null = null;
@@ -27,14 +31,14 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   newQuery(base: string) {
     this.currentQuery = new Query(base);
     this.isSingle = false;
-    return this;
+    return this as unknown as ArrayifyIfNotArray<T>;
   }
 
   getQuery() {
     return this.currentQuery;
   }
 
-  setQuery(query: Query) {
+  private setQuery(query: Query) {
     this.currentQuery = query;
   }
 
@@ -123,7 +127,7 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   getSingle() {
     this.currentQuery!.limit(1);
     this.isSingle = true;
-    return this as unknown as GetInner<T>;
+    return this as unknown as GetArrayInner<T>;
   }
 
   private retrieveFromInMemoryData() {

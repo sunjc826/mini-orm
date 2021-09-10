@@ -15,23 +15,26 @@ export enum Operators {
   IN = "IN",
 }
 
-export type GetInner<T> = T extends Array<infer Inner>
+export type ArrayifyIfNotArray<T> = T extends Array<any>
+  ? RepositoryStrategy<T>
+  : RepositoryStrategy<Array<T>>;
+
+export type GetArrayInner<T> = T extends Array<infer Inner>
   ? RepositoryStrategy<Inner>
   : RepositoryStrategy<T>;
 
 export interface RepositoryStrategy<T> extends PromiseLike<T | null> {
   currentQuery: Query | null;
-  newQuery(base: string): RepositoryStrategy<T>;
+  newQuery(base: string): ArrayifyIfNotArray<T>;
   getQuery(): Query | null;
-  setQuery(query: Query): void;
   resetQuery(): void;
   isQueryExists(): boolean;
   where(criterion: CriterionObject): RepositoryStrategy<T>;
   joins(domains: JoinObject): RepositoryStrategy<T>;
   limit(count: number): RepositoryStrategy<T>;
-  getSingle(): GetInner<T>;
-  find(criterion: CriterionObject): GetInner<T>;
-  findById(id: number): GetInner<T>;
+  getSingle(): GetArrayInner<T>;
+  find(criterion: CriterionObject): GetArrayInner<T>;
+  findById(id: number): GetArrayInner<T>;
   exec(): Promise<T | null>;
   cache(): RepositoryStrategy<T>;
   uncache(): RepositoryStrategy<T>;
