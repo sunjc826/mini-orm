@@ -1,18 +1,32 @@
 import { DomainObject } from "../../domain";
+import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
 import { CriterionObject, JoinObject, Query } from "../query";
 import { RepositoryStrategy } from "../types";
 
-export class RelationalStrategy implements RepositoryStrategy {
+export class RelationalStrategy<T extends DomainObject>
+  implements RepositoryStrategy<T>
+{
   currentQuery: Query | null = null;
   isSingle: boolean;
+  isSavedToCache: boolean = false;
+
+  cache() {
+    this.isSavedToCache = true;
+    return this;
+  }
+
+  uncache() {
+    this.isSavedToCache = false;
+    return this;
+  }
 
   isQueryExists(): boolean {
     return !!this.currentQuery;
   }
 
-  newQuery(base: string): RelationalStrategy {
+  newQuery(base: string) {
     this.currentQuery = new Query(base);
     this.isSingle = false;
     return this;
@@ -35,7 +49,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param criterion Condition to be added.
    * @returns Self to be further chained.
    */
-  find(criterion: CriterionObject): RelationalStrategy {
+  find(criterion: CriterionObject) {
     return this.where(criterion).getSingle();
   }
 
@@ -44,7 +58,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param id Id of corresponding row in db.
    * @returns A single domain object or null if no row is found.
    */
-  async findById<T extends DomainObject>(id: number): Promise<T | null> {
+  async findById(id: number): Promise<T | null> {
     return (await this.find({
       domainObjectField: "id",
       value: id,
@@ -57,7 +71,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param criterion Condition to be added.
    * @returns Self to be further chained.
    */
-  where(criterion: CriterionObject): RelationalStrategy {
+  where(criterion: CriterionObject) {
     this.currentQuery!.where(criterion);
     return this;
   }
@@ -89,7 +103,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param domains Hash of domain keys to perform the joins on.
    * @returns Self to be further chained.
    */
-  joins(domains: JoinObject): RelationalStrategy {
+  joins(domains: JoinObject) {
     this.currentQuery!.joins(domains);
     return this;
   }
@@ -99,7 +113,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * @param count Maximum number of rows to be returned.
    * @returns Self to be further chained.
    */
-  limit(count: number): RelationalStrategy {
+  limit(count: number) {
     this.currentQuery!.limit(count);
     return this;
   }
@@ -108,7 +122,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * Specifies that the query has at most 1 result, and the result is to be returned
    * as a single object instead of an array.
    */
-  getSingle(): RelationalStrategy {
+  getSingle() {
     this.currentQuery!.limit(1);
     this.isSingle = true;
     return this;
@@ -118,7 +132,7 @@ export class RelationalStrategy implements RepositoryStrategy {
    * Executes the current query and returns the domain objects of base.
    * @returns An array of domain objects or a single domain object.
    */
-  async exec<T extends DomainObject>(): Promise<Array<T> | T | null> {
+  async exec(): Promise<Array<T> | T | null> {
     if (!this.currentQuery) {
       throw new Error("no query defined");
     }
@@ -140,11 +154,25 @@ export class RelationalStrategy implements RepositoryStrategy {
       }
     }
 
-    let domainObjects = await BaseMapper.select<T>(
-      this.currentQuery!.toQueryString()
+    const cacheOptions = this.isSavedToCache
+      ? { key: query.toCacheObject() }
+      : undefined;
+
+    let domainObjects = await BaseMapper.select<T & DomainObject>(
+      this.currentQuery!.toQueryString(),
+      undefined,
+      cacheOptions
     );
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
 
     return queryResult || null;
+  }
+
+  then(callback?: AnyFunction) {
+    return this.exec().then(callback);
+  }
+
+  catch(callback: AnyFunction) {
+    return this.then().catch(callback);
   }
 }

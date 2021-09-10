@@ -30,7 +30,7 @@ export class ValueHolder<T extends DomainObject> {
    */
   private async loadValue() {
     const idMap = registry.getIdentityMap();
-    const Repo = getRepoProxy();
+    const Repo = getRepoProxy<T>();
     if (this.id) {
       let obj = idMap.find(this.domainKey, this.id);
       if (obj === undefined) {

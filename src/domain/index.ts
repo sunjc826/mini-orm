@@ -80,9 +80,9 @@ interface ExtendDomainObjectOptions<
   ParentDomainObject: DomainObjectConstructor<T, U>;
 }
 
-export function createDomainObject({
+export function createDomainObject<T>({
   domainKey,
-}: CreateDomainObjectOptions): typeof DomainObject & Repo {
+}: CreateDomainObjectOptions) {
   const NewDomainObject = class extends DomainObject {
     static domainKey = domainKey;
   };
@@ -106,17 +106,22 @@ export function createDomainObject({
         ? (value as AnyFunction).bind(RepoProxy)
         : value;
     },
-  }) as any as typeof DomainObject & Repo;
+  }) as any as Repo<T & DomainObject> & typeof DomainObject;
 }
 
-export function extendDomainObject<
-  T extends DomainObject,
-  U extends typeof DomainObject
->({ domainKey, ParentDomainObject }: ExtendDomainObjectOptions<T, U>) {
-  const NewDomainObject = class extends ParentDomainObject {
-    static domainKey = domainKey;
+// currying due to Typescript limitations
+// see: https://github.com/microsoft/TypeScript/issues/26242
+export function extendDomainObject<R>() {
+  return function <T extends DomainObject, U extends typeof DomainObject>({
+    domainKey,
+    ParentDomainObject,
+  }: ExtendDomainObjectOptions<T, U>) {
+    const NewDomainObject = class extends ParentDomainObject {
+      static domainKey = domainKey;
+    };
+    return NewDomainObject as any as Repo<T & R & DomainObject> &
+      typeof ParentDomainObject;
   };
-  return NewDomainObject as typeof ParentDomainObject & Repo;
 }
 
 export type BelongsTo<T extends DomainObject> = Promisify<T>;

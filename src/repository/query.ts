@@ -4,6 +4,8 @@ import { MetaDataObjectType } from "../data-mapper/metadata/types";
 import { Table } from "../data-mapper/table";
 import { DomainObject } from "../domain";
 import { formatDbColumn } from "../helpers";
+import { CompositeComparator } from "../helpers/sorting";
+import { Cacheable, Comparable } from "../helpers/types";
 import { registry } from "../registry";
 import { EMPTY, Operators } from "./types";
 
@@ -13,18 +15,28 @@ import { EMPTY, Operators } from "./types";
 
 // query object with checks in place to prevent incorrect queries
 // To consider: create another alternative "dumb" query object without checks
-export class Query {
+export class Query implements Cacheable {
   // the base represents the base domain object using the query
   // whatever is returned will be mapped to the domain object
   base: string;
   private criteria: Record<string, Array<Criterion>> = {};
   private joinDomains: Join;
-  private _limit: number;
+  private count: number;
   // to support includes functionality in future
   constructor(base: string) {
     this.base = base;
     this.criteria = { [base]: [] };
     this.joinDomains = new Join(base);
+  }
+
+  toCacheObject() {
+    const cacheObj: any = {};
+    for (const [key, value] of Object.entries(this.criteria)) {
+      cacheObj[key] = value.sort((a, b) => a.compareTo(b));
+    }
+    cacheObj.joinDomains = this.joinDomains;
+    cacheObj.count = this.count;
+    return cacheObj;
   }
 
   /**
@@ -75,7 +87,7 @@ export class Query {
     if (count <= 0) {
       throw new Error("limit must be positive");
     }
-    this._limit = count;
+    this.count = count;
   }
 
   isCriteriaValid(): boolean {
@@ -113,7 +125,7 @@ export class Query {
     const sqlSelectPart = sqlSelectPartArr.join(", ");
     const sqlFromPart = this.joinDomains.toSqlJoin();
     const sqlWherePart = sqlWherePartArr.join(" AND ");
-    const sqlLimitPart = this._limit ? `LIMIT ${this._limit}` : "";
+    const sqlLimitPart = this.count ? `LIMIT ${this.count}` : "";
     const sql = `SELECT ${sqlSelectPart} FROM ${sqlFromPart} WHERE ${sqlWherePart} ${sqlLimitPart};`;
 
     return sql;
@@ -146,11 +158,11 @@ type ProcessedJoinObject =
   | Array<ProcessedJoinObject>;
 
 // where
-class Criterion {
-  private sqlOperator: string;
-  private domainObject: string; // this field is unused
-  private domainObjectField: string;
-  private value: any;
+class Criterion implements Cacheable, Comparable<Criterion> {
+  sqlOperator: string;
+  domainObject: string; // this field is unused
+  domainObjectField: string;
+  value: any;
 
   constructor({
     sqlOperator,
@@ -165,6 +177,16 @@ class Criterion {
     this.domainObject = domainObject;
     this.domainObjectField = domainObjectField;
     this.value = value;
+  }
+
+  declare compareTo: Comparable<Criterion>["compareTo"];
+
+  toCacheObject() {
+    return {
+      sqlOperator: this.sqlOperator,
+      domainObjectField: this.domainObjectField,
+      value: this.value,
+    };
   }
 
   /**
@@ -240,14 +262,34 @@ class Criterion {
   }
 }
 
+Criterion.prototype.compareTo = function (other) {
+  return new CompositeComparator<Criterion>()
+    .compareWith((obj, other) =>
+      obj.sqlOperator.localeCompare(other.sqlOperator)
+    )
+    .compareWith((obj, other) =>
+      obj.domainObjectField.localeCompare(other.sqlOperator)
+    )
+    .compare(this, other);
+};
+
 // Note that the names here are names of the domain keys and not the underlying tables
-class Join {
+class Join implements Cacheable {
   private base: string;
   private domainKeys: Set<string> = new Set();
   private joinDomains: ProcessedJoinObject = [];
 
   constructor(base: string) {
     this.base = base;
+  }
+
+  // In general, joinDomains can get arbitrarily complicated,
+  // and the same joinDomains object can have different ordering of key value pairs
+  // leading to different JSON strings. This may or may not be solvable efficiently.
+  toCacheObject() {
+    return {
+      joinDomains: this.joinDomains,
+    };
   }
 
   isEmpty() {

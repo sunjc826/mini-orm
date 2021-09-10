@@ -62,7 +62,7 @@ test("select single table", async () => {
   await pool.query(AuthorTest.insertSql);
   const nullAuthor = await Author.findById(0);
   expect(nullAuthor).toBeNull();
-  const author = await Author.findById<Author>(1);
+  const author = await Author.findById(1);
   expect(author).toBeDefined();
   expect(author).not.toBeNull();
   expect(author!.name).toEqual("Sam");
@@ -75,7 +75,7 @@ test("foreign key mapping", async () => {
   await pool.query(AuthorTest.insertSql);
   await pool.query(BookTest.insertSql);
   await pool.query(PublisherTest.insertSql);
-  const dukeNukem = await Author.findById<Author>(4);
+  const dukeNukem = await Author.findById(4);
   // has many
   const books = dukeNukem?.books!;
   expect(books).toBeDefined();
@@ -101,9 +101,11 @@ async function createTestAuthor() {
   const author = (await Author.find({
     domainObjectField: "name",
     value: "TestAuthor",
-  }).exec()) as Author;
+  })) as Author;
   expect(author).toBeDefined();
+
   expect(author.name).toEqual("TestAuthor");
+
   return author;
 }
 
@@ -111,7 +113,7 @@ async function findTestAuthor() {
   return (await Author.find({
     domainObjectField: "name",
     value: "TestAuthor",
-  }).exec()) as Author;
+  })) as Author;
 }
 
 async function createTestPerson() {
@@ -129,7 +131,7 @@ async function createTestPerson() {
   const person = (await Person.find({
     domainObjectField: "name",
     value: "TestPerson",
-  }).exec()) as Person;
+  })) as Person;
   expect(person).toBeDefined();
   expect(person.name).toEqual("TestPerson");
   return person;
@@ -141,7 +143,7 @@ async function createTestBook(author: Author) {
   const book = (await Book.find({
     domainObjectField: "name",
     value: "TestBook",
-  }).exec()) as Book;
+  })) as Book;
   expect(book).toBeDefined();
   expect(book.name).toEqual("TestBook");
   return book;
@@ -153,7 +155,7 @@ async function createTestPublisher(book: Book) {
   const publisher = (await Publisher.find({
     domainObjectField: "region",
     value: "TestRegion",
-  }).exec()) as Publisher;
+  })) as Publisher;
   expect(publisher).toBeDefined();
   expect(publisher.region).toEqual("TestRegion");
   return publisher;
@@ -186,19 +188,19 @@ test("update single table", async () => {
 test("joining tables manually", async () => {
   const author = await createTestAuthor();
   await createTestBook(author);
-  const findAuthorViaJoiningBook = (await Author.joins(BOOK)
-    .find({ domainObject: BOOK, domainObjectField: "name", value: "TestBook" })
-    .exec()) as Author;
+  const findAuthorViaJoiningBook = (await Author.joins(BOOK).find({
+    domainObject: BOOK,
+    domainObjectField: "name",
+    value: "TestBook",
+  })) as Author;
   expect(findAuthorViaJoiningBook).toBeDefined();
   expect(findAuthorViaJoiningBook.name).toEqual("TestAuthor");
 
-  const findBookViaJoiningAuthor = (await Book.joins(AUTHOR)
-    .find({
-      domainObject: AUTHOR,
-      domainObjectField: "name",
-      value: "TestAuthor",
-    })
-    .exec()) as Book;
+  const findBookViaJoiningAuthor = (await Book.joins(AUTHOR).find({
+    domainObject: AUTHOR,
+    domainObjectField: "name",
+    value: "TestAuthor",
+  })) as Book;
   expect(findBookViaJoiningAuthor).toBeDefined();
   expect(findBookViaJoiningAuthor.name).toEqual("TestBook");
 });
@@ -208,23 +210,19 @@ test("multiple joins", async () => {
   await createTestBook(author);
   await createTestPublisher(await author.books[0]);
 
-  const findPublisher = (await Publisher.joins({ [BOOK]: AUTHOR })
-    .find({
-      domainObject: AUTHOR,
-      domainObjectField: "name",
-      value: "TestAuthor",
-    })
-    .exec()) as Publisher;
+  const findPublisher = (await Publisher.joins({ [BOOK]: AUTHOR }).find({
+    domainObject: AUTHOR,
+    domainObjectField: "name",
+    value: "TestAuthor",
+  })) as Publisher;
   expect(findPublisher).toBeDefined();
   expect(findPublisher.region).toEqual("TestRegion");
 
-  const findAuthor = (await Author.joins({ [BOOK]: PUBLISHER })
-    .find({
-      domainObject: PUBLISHER,
-      domainObjectField: "region",
-      value: "TestRegion",
-    })
-    .exec()) as Author;
+  const findAuthor = (await Author.joins({ [BOOK]: PUBLISHER }).find({
+    domainObject: PUBLISHER,
+    domainObjectField: "region",
+    value: "TestRegion",
+  })) as Author;
   expect(findAuthor).toBeDefined();
   expect(findAuthor.name).toEqual("TestAuthor");
 });
@@ -244,7 +242,7 @@ test("update proxied object", async () => {
 
 test("manual object mapping select", async () => {
   await pool.query(PersonTest.insertSql);
-  const person = await Person.findById<Person>(1);
+  const person = await Person.findById(1);
   expect(person).toBeDefined();
   expect(person?.locationDetails.country).toEqual("USA");
   expect(person?.locationDetails.town).toEqual("Area 51");
@@ -268,7 +266,7 @@ test("manual table column mapping update", async () => {
     },
   });
   await DomainObject.commit();
-  const updatedPerson = await Person.findById<Person>(1);
+  const updatedPerson = await Person.findById(1);
   expect(updatedPerson).toBeDefined();
   expect(updatedPerson?.locationDetails.country).toEqual("TestCountry2");
   expect(updatedPerson?.locationDetails.town).toEqual("TestTown2");
@@ -277,7 +275,7 @@ test("manual table column mapping update", async () => {
 
 test("single table inheritance select", async () => {
   await pool.query(PlayerTest.insertSql);
-  const footballer = await Footballer.findById<Footballer>(1);
+  const footballer = await Footballer.findById(1);
   expect(footballer).toBeDefined();
   expect(footballer?.name).toEqual("Johnson");
   expect(footballer?.club).toEqual("ClubX");
@@ -286,7 +284,7 @@ test("single table inheritance select", async () => {
 async function createFootballer() {
   Footballer.create<Footballer>({ name: "TestFootballer", club: "TestClub" });
   await DomainObject.commit();
-  const footballer = await Footballer.findById<Footballer>(1);
+  const footballer = await Footballer.findById(1);
   expect(footballer).toBeDefined();
   return footballer;
 }
@@ -299,13 +297,13 @@ test("single table inheritance insert", async () => {
 
 test("single table inheritance update", async () => {
   await createFootballer();
-  const footballer = await Footballer.findById<Footballer>(1);
+  const footballer = await Footballer.findById(1);
   footballer?.update<Footballer>({
     name: "TestFootballer2",
     club: "TestClub2",
   });
   await DomainObject.commit();
-  const updatedFootballer = await Footballer.findById<Footballer>(1);
+  const updatedFootballer = await Footballer.findById(1);
   expect(updatedFootballer).toBeDefined();
   expect(updatedFootballer?.name).toEqual("TestFootballer2");
   expect(updatedFootballer?.club).toEqual("TestClub2");
@@ -315,6 +313,6 @@ test("single table inheritance delete", async () => {
   const footballer = await createFootballer();
   footballer?.destroy();
   await DomainObject.commit();
-  const nullFootballer = await Footballer.findById<Footballer>(1);
+  const nullFootballer = await Footballer.findById(1);
   expect(nullFootballer).toBeNull();
 });

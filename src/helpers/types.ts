@@ -21,3 +21,19 @@ export type OwnKeyValues<T> = {
 export type RecursivePartial<T> = {
   [idx in keyof T]?: RecursivePartial<T[idx]>;
 };
+
+export interface Cacheable {
+  /**
+   * Returns a plain javascript object or primitive that is easily serialized.
+   */
+  toCacheObject: () => any;
+}
+
+export type Comparator<T> = (obj: T, other: T) => number;
+export interface WithComparator<T> {
+  compare: Comparator<T>;
+}
+
+export interface Comparable<T> {
+  compareTo: (other: T) => number;
+}

@@ -14,18 +14,21 @@ export enum Operators {
   IN = "IN",
 }
 
-export interface RepositoryStrategy {
+export interface RepositoryStrategy<T extends DomainObject>
+  extends PromiseLike<Array<T> | T | null> {
   currentQuery: Query | null;
-  newQuery(base: string): RepositoryStrategy;
+  newQuery(base: string): RepositoryStrategy<T>;
   getQuery(): Query | null;
   setQuery(query: Query): void;
   resetQuery(): void;
   isQueryExists(): boolean;
-  where(criterion: CriterionObject): RepositoryStrategy;
-  joins(domains: JoinObject): RepositoryStrategy;
-  limit(count: number): RepositoryStrategy;
-  getSingle(): RepositoryStrategy;
-  find(criterion: CriterionObject): RepositoryStrategy;
-  findById<T extends DomainObject>(id: number): Promise<T | null>;
-  exec<T extends DomainObject>(): Promise<Array<T> | T | null>;
+  where(criterion: CriterionObject): RepositoryStrategy<T>;
+  joins(domains: JoinObject): RepositoryStrategy<T>;
+  limit(count: number): RepositoryStrategy<T>;
+  getSingle(): RepositoryStrategy<T>;
+  find(criterion: CriterionObject): RepositoryStrategy<T>;
+  findById(id: number): Promise<T | null>;
+  exec(): Promise<Array<T> | T | null>;
+  cache(): RepositoryStrategy<T>;
+  uncache(): RepositoryStrategy<T>;
 }

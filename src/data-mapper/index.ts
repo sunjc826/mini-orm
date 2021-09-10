@@ -2,6 +2,7 @@ import _ from "lodash";
 import { PoolClient } from "pg";
 import { getPool } from "../connection";
 import { DbPool, ResultSet } from "../connection";
+import { redisClient } from "../connection/redis";
 import { DbClient } from "../connection/connect";
 import { DomainObject } from "../domain";
 import { MetaDataErrors } from "../errors";
@@ -23,8 +24,9 @@ import { ID_COLUMN_NAME } from "./types";
 
 export abstract class DataMapper {
   static domainKey: string;
-  static dbPool: Promise<DbPool> = getPool(); // TODO: is it possible to not have the promise here?
+  static dbPool: DbPool = getPool(); // TODO: is it possible to not have the promise here?
   static metadata: MetaData;
+  static redisClient = redisClient;
 
   static generateMetaData<T extends typeof Table>(
     options: MetaData.GenerateMetaDataOptions<T>
@@ -43,7 +45,7 @@ export abstract class DataMapper {
       sql += Table.toSqlCreate();
     }
 
-    return (await this.dbPool).query(sql);
+    return this.dbPool.query(sql);
   }
 
   /**
@@ -56,7 +58,11 @@ export abstract class DataMapper {
       sql += _Table.toSqlTruncate();
     }
 
-    return (await this.dbPool).query(sql);
+    return this.dbPool.query(sql);
+  }
+
+  static doCache(key: any, value: any) {
+    this.redisClient.set(JSON.stringify(key), JSON.stringify(value));
   }
 
   /**
@@ -65,11 +71,17 @@ export abstract class DataMapper {
    */
   static async select<T extends DomainObject>(
     sql: string,
-    client?: PoolClient
+    client?: PoolClient,
+    cacheOptions?: {
+      key: any;
+    }
   ): Promise<Array<T>> {
-    const resultSet = (await (client || (await this.dbPool)).query(
+    const resultSet = (await (client || this.dbPool).query(
       sql
     )) as ResultSet<T>;
+    if (cacheOptions) {
+      this.doCache(cacheOptions.key, resultSet);
+    }
     return this.resultSetToDomainObjects(resultSet);
   }
 
@@ -85,9 +97,7 @@ export abstract class DataMapper {
       return [];
     }
     const sql = await this.domainObjectToSql(objects);
-    const idArr = (await (client || (await this.dbPool)).query(
-      sql
-    )) as ResultSet<T>;
+    const idArr = (await (client || this.dbPool).query(sql)) as ResultSet<T>;
     return idArr;
   }
 
@@ -99,7 +109,7 @@ export abstract class DataMapper {
       return;
     }
     const sql = await this.getUpdateSql(objects);
-    await (client || (await this.dbPool)).query(sql);
+    await (client || this.dbPool).query(sql);
   }
 
   /**
@@ -113,7 +123,7 @@ export abstract class DataMapper {
       return;
     }
     const sql = this.getDeleteSql(objectIds);
-    await (client || (await this.dbPool)).query(sql);
+    await (client || this.dbPool).query(sql);
   }
 
   // Note: update may be very slow since each updated record creates
@@ -438,7 +448,7 @@ export abstract class DataMapper {
 export namespace DataMapper {
   export var Test = {
     async testConn(): Promise<boolean> {
-      const client = await (await DataMapper.dbPool).getClient();
+      const client = await DataMapper.dbPool.getClient();
       if (!client) {
         return false;
       }
@@ -452,7 +462,7 @@ export namespace DataMapper {
         CREATE SCHEMA public;
         GRANT ALL ON SCHEMA public TO postgres;
         GRANT ALL ON SCHEMA public TO public;`;
-      return (await DataMapper.dbPool).query(sql);
+      return DataMapper.dbPool.query(sql);
     },
   };
 }

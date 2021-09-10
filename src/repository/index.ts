@@ -1,3 +1,4 @@
+import { DomainObject } from "..";
 import { RelationalStrategy } from "./strategies/relational";
 import { RepositoryStrategy } from "./types";
 
@@ -6,16 +7,17 @@ export const Strategies = {
 } as const;
 export type Strategies = typeof Strategies;
 
-class Repository {
-  public strategy: RepositoryStrategy;
+class Repository<T extends DomainObject> {
+  public strategy: RepositoryStrategy<T>;
 
-  constructor(strategy: RepositoryStrategy) {
+  constructor(strategy: RepositoryStrategy<T>) {
     this.strategy = strategy;
   }
 }
 
-export type Repo = Repository & RepositoryStrategy;
-function createRepoProxy(repo: Repository): Repo {
+export type Repo<T extends DomainObject> = Repository<T> &
+  RepositoryStrategy<T>;
+function createRepoProxy<T extends DomainObject>(repo: Repository<T>): Repo<T> {
   return new Proxy(repo, {
     get(target, prop, _receiver) {
       let result;
@@ -30,7 +32,7 @@ function createRepoProxy(repo: Repository): Repo {
         return typeof result === "function" ? result.bind(target) : result;
       }
     },
-  }) as any as Repository & RepositoryStrategy;
+  }) as any as Repository<T> & RepositoryStrategy<T>;
 }
 
 /**
@@ -38,9 +40,9 @@ function createRepoProxy(repo: Repository): Repo {
  * @param strategy
  * @returns
  */
-export function getRepoProxy(
+export function getRepoProxy<T extends DomainObject>(
   Strategy: Strategies[keyof Strategies] = Strategies.RELATIONAL
-): Repo {
+): Repo<T> {
   return createRepoProxy(new Repository(new Strategy()));
 }
 
