@@ -90,13 +90,8 @@ test("foreign key mapping", async () => {
   expect(await publisher.region).toEqual("International");
 });
 
-// test("topological sort", async () => {
-//   const sorted = registry.getCorrectInsertOrder();
-//   expect(sorted).toEqual(["author", "person", "book", "publisher"]);
-// });
-
 async function createTestAuthor() {
-  Author.create<Author>({ name: "TestAuthor", age: 30 });
+  Author.create({ name: "TestAuthor", age: 30 });
   await DomainObject.commit();
   const author = (await Author.find({
     domainObjectField: "name",
@@ -117,7 +112,7 @@ async function findTestAuthor() {
 }
 
 async function createTestPerson() {
-  Person.create<Person>({
+  Person.create({
     name: "TestPerson",
     age: 30,
     favoriteFood: "salad",
@@ -138,7 +133,7 @@ async function createTestPerson() {
 }
 
 async function createTestBook(author: Author) {
-  Book.create<Book>({ name: "TestBook", genre: "TestGenre", author });
+  Book.create({ name: "TestBook", genre: "TestGenre", author });
   await DomainObject.commit();
   const book = (await Book.find({
     domainObjectField: "name",
@@ -150,7 +145,7 @@ async function createTestBook(author: Author) {
 }
 
 async function createTestPublisher(book: Book) {
-  Publisher.create<Publisher>({ book, region: "TestRegion" });
+  Publisher.create({ book, region: "TestRegion" });
   await DomainObject.commit();
   const publisher = (await Publisher.find({
     domainObjectField: "region",
@@ -178,7 +173,7 @@ test("delete from single table", async () => {
 
 test("update single table", async () => {
   const author = await createTestAuthor();
-  author.update<Author>({ age: 55 });
+  author.update({ age: 55 });
   await DomainObject.commit();
   const updatedAuthor = await findTestAuthor();
   expect(updatedAuthor).toBeDefined();
@@ -232,7 +227,7 @@ test("update proxied object", async () => {
   await createTestBook(author);
   await createTestPublisher(await author.books[0]);
 
-  (await (await author.books[0]).publisher.update)<Publisher>({
+  (await (await author.books[0]).publisher.update)({
     region: "UpdatedTestRegion",
   });
   await DomainObject.commit();
@@ -257,7 +252,7 @@ test("manual table column mapping insert", async () => {
 test("manual table column mapping update", async () => {
   const person = await createTestPerson();
   expect(person.locationDetails.country).toEqual("TestCountry");
-  person.update<Person>({
+  person.update({
     locationDetails: {
       ...person.locationDetails, // TODO: Manual merging is needed when doing updates due to limitations of dependency tracking
       // without the above line, the sql generated will set street to undefined.
@@ -282,7 +277,7 @@ test("single table inheritance select", async () => {
 });
 
 async function createFootballer() {
-  Footballer.create<Footballer>({ name: "TestFootballer", club: "TestClub" });
+  Footballer.create({ name: "TestFootballer", club: "TestClub" });
   await DomainObject.commit();
   const footballer = await Footballer.findById(1);
   expect(footballer).toBeDefined();
@@ -298,7 +293,7 @@ test("single table inheritance insert", async () => {
 test("single table inheritance update", async () => {
   await createFootballer();
   const footballer = await Footballer.findById(1);
-  footballer?.update<Footballer>({
+  footballer?.update({
     name: "TestFootballer2",
     club: "TestClub2",
   });

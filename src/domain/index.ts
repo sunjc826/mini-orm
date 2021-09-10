@@ -22,20 +22,11 @@ export class DomainObject {
     for (const [key, value] of Object.entries(obj)) {
       (this as any)[key] = value;
     }
-    // return new Proxy(this, {
-    //   set(target, prop, value, _receiver) {
-    //     if (Reflect.has(target, prop)) {
-    //       target.update({ [prop]: value });
-    //       return true;
-    //     }
-    //     return false;
-    //   },
-    // });
   }
 
-  static create<T extends DomainObject>(
-    ownKeyValues: Partial<OwnKeyValues<T>>
-  ) {
+  static create<
+    T extends DomainObjectConstructor<DomainObject, typeof DomainObject>
+  >(this: T, ownKeyValues: Partial<OwnKeyValues<InstanceType<T>>>) {
     const instance = new this(ownKeyValues);
     registry.unitOfWork.registerNew({
       domainKey: this.domainKey,
@@ -48,8 +39,8 @@ export class DomainObject {
     return registry.unitOfWork.commit();
   }
 
-  update<T extends DomainObject>(
-    ownKeyValues: RecursivePartial<OwnKeyValues<T>>,
+  update(
+    ownKeyValues: RecursivePartial<OwnKeyValues<typeof this>>,
     merge: boolean = true
   ) {
     const dirtiedProps = Object.keys(ownKeyValues);

@@ -45,7 +45,7 @@ The fields that you want your domain object to have are defined as instance attr
 Instances created from the below `Author` class will have the attributes `name`, `age` and `books`.
 
 ```typescript
-class Author extends createDomainObject({ domainKey: "author" }) {
+class Author extends createDomainObject<Author>({ domainKey: "author" }) {
   name: string;
   age: number;
   books: HasMany<Book>;
@@ -94,20 +94,16 @@ Queries are done in an ActiveRecord sort of manner, though the underlying patter
 /**
  * Search by id
  */
-// due to typescript limitations, typescript will not known that this
-// returns an instance of author
 let author = await Author.findById(1);
-// tell typescript that you are getting an author
-author = await Author.findById<Author>(1);
 
 /**
  * Search by other sql conditions
  */
 // if you do not specify an operator, it will default to equals
-author = (await Author.find({
+author = await Author.find({
     domainObjectField: "name",
     value: "TestAuthor",
-}).exec()) as Author;
+});
 ```
 
 #### Insert
@@ -117,13 +113,7 @@ Inserts are done using a `create` method available on every domain object class.
 /**
  * Creates an author with name 'TestAuthor' and age 30
  */
-// This is perfectly fine in terms of runtime, but Typescript
-// does not know that you are trying to create an Author.
 Author.create({ name: "TestAuthor", age: 30 });
-// Do this instead.
-// Now, Typescript will provide autocomplete suggestions 
-// for instance attributes like name that are defined on Author.
-Author.create<Author>({ name: "TestAuthor", age: 30 });
 
 /**
  * This is needed to save your newly created object to the database.
@@ -141,9 +131,7 @@ await AnyOtherClassInheritingFromDomainObject.commit();
 /**
  * Updates author's age attribute to 55.
  */
-// Like above, providing the generic type <Author> makes Typescript happy,
-// plus you get autocomplete suggestions.
-author.update<Author>({ age: 55 });
+author.update({ age: 55 });
 
 /**
  * Like insert, this is needed for database persistence.
