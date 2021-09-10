@@ -23,7 +23,7 @@ beforeAll(async () => {
   clear();
   await DataMapper.Test.dropAll();
   await DataMapper.createTables();
-  pool = await DataMapper.dbPool;
+  pool = DataMapper.dbPool;
 });
 
 afterAll(async () => {
@@ -101,7 +101,7 @@ async function createTestAuthor() {
   const author = (await Author.find({
     domainObjectField: "name",
     value: "TestAuthor",
-  })) as Author;
+  }))!;
   expect(author).toBeDefined();
 
   expect(author.name).toEqual("TestAuthor");
@@ -113,7 +113,7 @@ async function findTestAuthor() {
   return (await Author.find({
     domainObjectField: "name",
     value: "TestAuthor",
-  })) as Author;
+  }))!;
 }
 
 async function createTestPerson() {
@@ -131,7 +131,7 @@ async function createTestPerson() {
   const person = (await Person.find({
     domainObjectField: "name",
     value: "TestPerson",
-  })) as Person;
+  }))!;
   expect(person).toBeDefined();
   expect(person.name).toEqual("TestPerson");
   return person;
@@ -143,7 +143,7 @@ async function createTestBook(author: Author) {
   const book = (await Book.find({
     domainObjectField: "name",
     value: "TestBook",
-  })) as Book;
+  }))!;
   expect(book).toBeDefined();
   expect(book.name).toEqual("TestBook");
   return book;
@@ -155,7 +155,7 @@ async function createTestPublisher(book: Book) {
   const publisher = (await Publisher.find({
     domainObjectField: "region",
     value: "TestRegion",
-  })) as Publisher;
+  }))!;
   expect(publisher).toBeDefined();
   expect(publisher.region).toEqual("TestRegion");
   return publisher;
@@ -192,7 +192,7 @@ test("joining tables manually", async () => {
     domainObject: BOOK,
     domainObjectField: "name",
     value: "TestBook",
-  })) as Author;
+  }))!;
   expect(findAuthorViaJoiningBook).toBeDefined();
   expect(findAuthorViaJoiningBook.name).toEqual("TestAuthor");
 
@@ -200,7 +200,7 @@ test("joining tables manually", async () => {
     domainObject: AUTHOR,
     domainObjectField: "name",
     value: "TestAuthor",
-  })) as Book;
+  }))!;
   expect(findBookViaJoiningAuthor).toBeDefined();
   expect(findBookViaJoiningAuthor.name).toEqual("TestBook");
 });
@@ -214,7 +214,7 @@ test("multiple joins", async () => {
     domainObject: AUTHOR,
     domainObjectField: "name",
     value: "TestAuthor",
-  })) as Publisher;
+  }))!;
   expect(findPublisher).toBeDefined();
   expect(findPublisher.region).toEqual("TestRegion");
 
@@ -222,7 +222,7 @@ test("multiple joins", async () => {
     domainObject: PUBLISHER,
     domainObjectField: "region",
     value: "TestRegion",
-  })) as Author;
+  }))!;
   expect(findAuthor).toBeDefined();
   expect(findAuthor.name).toEqual("TestAuthor");
 });

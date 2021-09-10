@@ -16,7 +16,8 @@ class Repository<T extends DomainObject> {
 }
 
 export type Repo<T extends DomainObject> = Repository<T> &
-  RepositoryStrategy<T>;
+  RepositoryStrategy<Array<T>>;
+
 function createRepoProxy<T extends DomainObject>(repo: Repository<T>): Repo<T> {
   return new Proxy(repo, {
     get(target, prop, _receiver) {
@@ -32,7 +33,7 @@ function createRepoProxy<T extends DomainObject>(repo: Repository<T>): Repo<T> {
         return typeof result === "function" ? result.bind(target) : result;
       }
     },
-  }) as any as Repository<T> & RepositoryStrategy<T>;
+  }) as any as Repository<T> & RepositoryStrategy<Array<T>>; // by default an array of records is produced, therefore the type reflects this
 }
 
 /**
@@ -45,6 +46,3 @@ export function getRepoProxy<T extends DomainObject>(
 ): Repo<T> {
   return createRepoProxy(new Repository(new Strategy()));
 }
-
-// export * from "./query";
-// export * from "./types";

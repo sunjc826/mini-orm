@@ -1,3 +1,4 @@
+import { RelationalStrategy } from "..";
 import { DomainObject } from "../domain";
 import { CriterionObject, JoinObject, Query } from "./query";
 
@@ -14,8 +15,11 @@ export enum Operators {
   IN = "IN",
 }
 
-export interface RepositoryStrategy<T extends DomainObject>
-  extends PromiseLike<Array<T> | T | null> {
+export type GetInner<T> = T extends Array<infer Inner>
+  ? RepositoryStrategy<Inner>
+  : RepositoryStrategy<T>;
+
+export interface RepositoryStrategy<T> extends PromiseLike<T | null> {
   currentQuery: Query | null;
   newQuery(base: string): RepositoryStrategy<T>;
   getQuery(): Query | null;
@@ -25,10 +29,10 @@ export interface RepositoryStrategy<T extends DomainObject>
   where(criterion: CriterionObject): RepositoryStrategy<T>;
   joins(domains: JoinObject): RepositoryStrategy<T>;
   limit(count: number): RepositoryStrategy<T>;
-  getSingle(): RepositoryStrategy<T>;
-  find(criterion: CriterionObject): RepositoryStrategy<T>;
-  findById(id: number): Promise<T | null>;
-  exec(): Promise<Array<T> | T | null>;
+  getSingle(): GetInner<T>;
+  find(criterion: CriterionObject): GetInner<T>;
+  findById(id: number): GetInner<T>;
+  exec(): Promise<T | null>;
   cache(): RepositoryStrategy<T>;
   uncache(): RepositoryStrategy<T>;
 }

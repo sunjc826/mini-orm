@@ -3,22 +3,20 @@ import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
 import { CriterionObject, JoinObject, Query } from "../query";
-import { RepositoryStrategy } from "../types";
+import { GetInner, RepositoryStrategy } from "../types";
 
-export class RelationalStrategy<T extends DomainObject>
-  implements RepositoryStrategy<T>
-{
+export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   currentQuery: Query | null = null;
   isSingle: boolean;
-  isSavedToCache: boolean = false;
+  useCache: boolean = false;
 
   cache() {
-    this.isSavedToCache = true;
+    this.useCache = true;
     return this;
   }
 
   uncache() {
-    this.isSavedToCache = false;
+    this.useCache = false;
     return this;
   }
 
@@ -58,11 +56,11 @@ export class RelationalStrategy<T extends DomainObject>
    * @param id Id of corresponding row in db.
    * @returns A single domain object or null if no row is found.
    */
-  async findById(id: number): Promise<T | null> {
-    return (await this.find({
+  findById(id: number) {
+    return this.find({
       domainObjectField: "id",
       value: id,
-    }).exec()) as T;
+    });
   }
 
   /**
@@ -125,47 +123,55 @@ export class RelationalStrategy<T extends DomainObject>
   getSingle() {
     this.currentQuery!.limit(1);
     this.isSingle = true;
-    return this;
+    return this as unknown as GetInner<T>;
+  }
+
+  private retrieveFromInMemoryData() {
+    const query = this.currentQuery!;
+    return registry
+      .getIdentityMap()
+      .getCachedObjectsByDomain(query.base)
+      .filter((obj) => !!obj) // removed undefined or null objects
+      .find((obj) => query.matchObject(obj));
+  }
+
+  private retrieveFromMapper() {
+    const query = this.currentQuery!;
+    const BaseMapper = registry.getMapper(query.base);
+    const cacheOptions = this.useCache
+      ? { key: query.toCacheObject() }
+      : undefined;
+
+    return BaseMapper.select<T & DomainObject>(
+      this.currentQuery!.toQueryString(),
+      undefined,
+      cacheOptions
+    );
   }
 
   /**
    * Executes the current query and returns the domain objects of base.
    * @returns An array of domain objects or a single domain object.
    */
-  async exec(): Promise<Array<T> | T | null> {
+  async exec() {
     if (!this.currentQuery) {
       throw new Error("no query defined");
     }
     const query = this.currentQuery;
-    const base = query.base;
-    const BaseMapper = registry.getMapper(base);
 
     // for single results that don't have cross table conditions,
     // check identity map if object exists first,
     // otherwise, make a db query
     if (this.isSingle && query.isSimple()) {
-      const inMemoryResult = registry
-        .getIdentityMap()
-        .getCachedObjectsByDomain(base)
-        .filter((obj) => !!obj) // removed undefined or null objects
-        .find((obj) => query.matchObject(obj));
+      const inMemoryResult = this.retrieveFromInMemoryData();
       if (inMemoryResult) {
         return inMemoryResult;
       }
     }
 
-    const cacheOptions = this.isSavedToCache
-      ? { key: query.toCacheObject() }
-      : undefined;
-
-    let domainObjects = await BaseMapper.select<T & DomainObject>(
-      this.currentQuery!.toQueryString(),
-      undefined,
-      cacheOptions
-    );
+    const domainObjects = await this.retrieveFromMapper();
     const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
-
-    return queryResult || null;
+    return (queryResult || null) as T | null;
   }
 
   then(callback?: AnyFunction) {
