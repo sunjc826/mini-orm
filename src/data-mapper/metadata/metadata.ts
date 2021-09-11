@@ -1,5 +1,5 @@
 import { Table } from "../table";
-import { ID_COLUMN_NAME } from "../types";
+import { ID_COLUMN_NAME } from "../data-types";
 import { ColumnMap } from "./columnMap";
 import { ManualObjectMap } from "./manualObjectMap";
 import { ForeignKeyMap, RelationType } from "./foreignKeyMap";

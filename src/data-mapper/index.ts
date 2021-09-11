@@ -20,7 +20,7 @@ import { RelationType } from "./metadata/foreignKeyMap";
 import { AllMetadataFieldTypes, MetaData } from "./metadata/metadata";
 import { MetaDataObjectType } from "./metadata/types";
 import { Table } from "./table";
-import { ID_COLUMN_NAME } from "./types";
+import { ID_COLUMN_NAME } from "./data-types";
 
 export abstract class DataMapper {
   static domainKey: string;
@@ -33,6 +33,10 @@ export abstract class DataMapper {
   ) {
     this.metadata = new MetaData();
     this.metadata.generateMetaData(options);
+  }
+
+  static async createExtensions() {
+    return this.dbPool.query("CREATE EXTENSION IF NOT EXISTS 'uuid-ossp';");
   }
 
   /**

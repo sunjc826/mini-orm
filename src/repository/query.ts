@@ -160,21 +160,14 @@ type ProcessedJoinObject =
 // where
 class Criterion implements Cacheable, Comparable<Criterion> {
   sqlOperator: string;
-  domainObject: string; // this field is unused
   domainObjectField: string;
   value: any;
 
-  constructor({
-    sqlOperator,
-    domainObject,
-    domainObjectField,
-    value,
-  }: CriterionObject) {
-    if (!sqlOperator || !domainObject) {
+  constructor({ sqlOperator, domainObjectField, value }: CriterionObject) {
+    if (!sqlOperator) {
       throw new Error("invalid creation of Criterion");
     }
     this.sqlOperator = sqlOperator;
-    this.domainObject = domainObject;
     this.domainObjectField = domainObjectField;
     this.value = value;
   }
@@ -235,20 +228,20 @@ class Criterion implements Cacheable, Comparable<Criterion> {
     // match the right metadata
     // for now we assume TableColumn to domain object field 1:1 map
     // in future, we will work on value objects and other more complex mappings
-    const field = Mapper.metadata.findByDomain(this.domainObjectField);
-    if (!field) {
+    const metadataField = Mapper.metadata.findByDomain(this.domainObjectField);
+    if (!metadataField) {
       throw Error(
         `no match for domain object field: ${this.domainObjectField}`
       );
     }
     let tableColumnKey;
-    switch (field.variant) {
+    switch (metadataField.variant) {
       case MetaDataObjectType.COLUMN_MAP: {
-        tableColumnKey = field.tableColumnKey;
+        tableColumnKey = metadataField.tableColumnKey;
         break;
       }
       case MetaDataObjectType.FOREIGN_KEY_MAP: {
-        tableColumnKey = field.foreignKey;
+        tableColumnKey = metadataField.foreignKey;
         break;
       }
       default: {

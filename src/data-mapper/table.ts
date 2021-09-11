@@ -11,8 +11,8 @@ import {
   AllOptions,
   ColumnTypes,
   COLUMN_TYPE_MAP,
-  Int,
-} from "./types";
+} from "./data-types";
+import { Int } from "./data-types/int";
 
 export abstract class Table {
   /**
