@@ -184,7 +184,7 @@ test("joining tables manually", async () => {
   const author = await createTestAuthor();
   await createTestBook(author);
   const findAuthorViaJoiningBook = (await Author.joins(BOOK).find({
-    domainObject: BOOK,
+    domainKey: BOOK,
     domainObjectField: "name",
     value: "TestBook",
   }))!;
@@ -192,7 +192,7 @@ test("joining tables manually", async () => {
   expect(findAuthorViaJoiningBook.name).toEqual("TestAuthor");
 
   const findBookViaJoiningAuthor = (await Book.joins(AUTHOR).find({
-    domainObject: AUTHOR,
+    domainKey: AUTHOR,
     domainObjectField: "name",
     value: "TestAuthor",
   }))!;
@@ -206,7 +206,7 @@ test("multiple joins", async () => {
   await createTestPublisher(await author.books[0]);
 
   const findPublisher = (await Publisher.joins({ [BOOK]: AUTHOR }).find({
-    domainObject: AUTHOR,
+    domainKey: AUTHOR,
     domainObjectField: "name",
     value: "TestAuthor",
   }))!;
@@ -214,7 +214,7 @@ test("multiple joins", async () => {
   expect(findPublisher.region).toEqual("TestRegion");
 
   const findAuthor = (await Author.joins({ [BOOK]: PUBLISHER }).find({
-    domainObject: PUBLISHER,
+    domainKey: PUBLISHER,
     domainObjectField: "region",
     value: "TestRegion",
   }))!;

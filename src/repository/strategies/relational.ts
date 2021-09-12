@@ -2,7 +2,10 @@ import { DomainObject } from "../../domain";
 import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
-import { CriterionObject, JoinObject, Query } from "../query";
+import { Query } from "../query";
+import { Aggregate } from "../query/aggregate";
+import { Criterion } from "../query/criterion";
+import { Join } from "../query/join";
 import {
   ArrayifyIfNotArray,
   GetArrayInner,
@@ -11,8 +14,18 @@ import {
 
 export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   currentQuery: Query | null = null;
+  /**
+   * Whether the query returns a single result or an array of results.
+   */
   isSingle: boolean;
+  /**
+   * Whether the query's results are to be cached.
+   */
   useCache: boolean = false;
+  /**
+   * Whether the query's results are to be converted to domain objects.
+   */
+  toDomainObject: boolean = true;
 
   cache() {
     this.useCache = true;
@@ -24,22 +37,34 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
     return this;
   }
 
+  resultSetOnly() {
+    this.toDomainObject = false;
+    return this;
+  }
+
+  mapToDomainObjects() {
+    this.toDomainObject = true;
+    return this;
+  }
+
   isQueryExists(): boolean {
     return !!this.currentQuery;
+  }
+
+  setQuery(query: Query) {
+    this.currentQuery = query;
+    return this;
   }
 
   newQuery(base: string) {
     this.currentQuery = new Query(base);
     this.isSingle = false;
+    this.toDomainObject = true;
     return this as unknown as ArrayifyIfNotArray<T>;
   }
 
   getQuery() {
     return this.currentQuery;
-  }
-
-  private setQuery(query: Query) {
-    this.currentQuery = query;
   }
 
   resetQuery() {
@@ -51,7 +76,7 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
    * @param criterion Condition to be added.
    * @returns Self to be further chained.
    */
-  find(criterion: CriterionObject) {
+  find(criterion: Criterion.CriterionObject) {
     return this.where(criterion).getSingle();
   }
 
@@ -73,7 +98,7 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
    * @param criterion Condition to be added.
    * @returns Self to be further chained.
    */
-  where(criterion: CriterionObject) {
+  where(criterion: Criterion.CriterionObject) {
     this.currentQuery!.where(criterion);
     return this;
   }
@@ -105,7 +130,7 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
    * @param domains Hash of domain keys to perform the joins on.
    * @returns Self to be further chained.
    */
-  joins(domains: JoinObject) {
+  joins(domains: Join.JoinObject) {
     this.currentQuery!.joins(domains);
     return this;
   }
@@ -130,6 +155,48 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
     return this as unknown as GetArrayInner<T>;
   }
 
+  count() {
+    this.currentQuery!.aggregate(
+      new Aggregate({ aggregateFunction: Aggregate.AggregateFunctions.COUNT })
+    );
+  }
+
+  min(domainObjectField: string) {
+    this.currentQuery!.aggregate(
+      new Aggregate({
+        aggregateFunction: Aggregate.AggregateFunctions.MIN,
+        domainObjectField,
+      })
+    );
+  }
+
+  max(domainObjectField: string) {
+    this.currentQuery!.aggregate(
+      new Aggregate({
+        aggregateFunction: Aggregate.AggregateFunctions.MAX,
+        domainObjectField,
+      })
+    );
+  }
+
+  average(domainObjectField: string) {
+    this.currentQuery!.aggregate(
+      new Aggregate({
+        aggregateFunction: Aggregate.AggregateFunctions.AVG,
+        domainObjectField,
+      })
+    );
+  }
+
+  sum(domainObjectField: string) {
+    this.currentQuery!.aggregate(
+      new Aggregate({
+        aggregateFunction: Aggregate.AggregateFunctions.SUM,
+        domainObjectField,
+      })
+    );
+  }
+
   private retrieveFromInMemoryData() {
     const query = this.currentQuery!;
     return registry
@@ -142,14 +209,14 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   private retrieveFromMapper() {
     const query = this.currentQuery!;
     const BaseMapper = registry.getMapper(query.base);
-    const cacheOptions = this.useCache
-      ? { key: query.toCacheObject() }
-      : undefined;
 
     return BaseMapper.select<T & DomainObject>(
       this.currentQuery!.toQueryString(),
       undefined,
-      cacheOptions
+      {
+        cacheKey: this.useCache ? query.toCacheObject() : undefined,
+        resultSetOnly: !this.toDomainObject,
+      }
     );
   }
 

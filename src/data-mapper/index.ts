@@ -76,17 +76,20 @@ export abstract class DataMapper {
   static async select<T extends DomainObject>(
     sql: string,
     client?: PoolClient,
-    cacheOptions?: {
-      key: any;
-    }
+    options?: Partial<{
+      cacheKey: any;
+      resultSetOnly: boolean;
+    }>
   ): Promise<Array<T>> {
     const resultSet = (await (client || this.dbPool).query(
       sql
     )) as ResultSet<T>;
-    if (cacheOptions) {
-      this.doCache(cacheOptions.key, resultSet);
+    if (options?.cacheKey) {
+      this.doCache(options.cacheKey, resultSet);
     }
-    return this.resultSetToDomainObjects(resultSet);
+    return options?.resultSetOnly
+      ? resultSet
+      : this.resultSetToDomainObjects(resultSet);
   }
 
   /**
