@@ -41,7 +41,9 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "pg": "^8.7.1",
+    "pg": "^8.7.1"
+  },
+  "peerDependencies": {
     "redis": "^4.0.0-rc.1"
   }
 }

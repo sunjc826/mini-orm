@@ -37,7 +37,7 @@ const AuthorTable = createTable({
 });
 ```
 
-### Model
+### Model/Domain Object
 In the data mapper pattern, we do not work directly with database rows, but rather domain objects that are more decoupled from the database table structures. Here, you can use the `createDomainObject` function to create a domain object class to inherit from.
 
 The fields that you want your domain object to have are defined as instance attributes of your domain object class.
@@ -57,6 +57,18 @@ For the basic usecase, it is very easy to use the `createDomainObject` helper. S
 A quick explanation on what is the `domainKey`
 - In a data mapper pattern, domain objects are decoupled from the underlying tables that are persisted on disk, however, there must still be some ways for the user to indicate which tables are associated with which domain object.
 - The `domainKey` is a key that makes this link.
+
+#### Single Table Inheritance
+Example:
+```typescript
+class Footballer extends extendDomainObject<Footballer>()({
+  domainKey: FOOTBALLER,
+  ParentDomainObject: Player,
+}) {
+  club: string;
+}
+```
+
 
 ### Data Mapper
 Now that we have the table and the model, we need some way to translate the a table row to a model object, and vice versa. You can use the `createMapper` function to create a mapper class.
@@ -156,15 +168,178 @@ await DomainObject.commit();
 #### Commit
 You can chain a bunch of inserts, updates and deletes before calling `commit`, which will notify the database of these changes in a single transaction.
 
+## Full code snippet
+```typescript
+// Domain Keys
+const PLAYER = "player";
+const FOOTBALLER = "footballer";
+
+// Table
+const PlayerTable = createTable({
+  tableName: "players",
+  columns: {
+    id: {
+      type: "serial",
+      options: {
+        primaryKey: true,
+      },
+    },
+    name: {
+      type: "text",
+      options: {
+        nullable: false,
+      },
+    },
+    club: {
+      // footballer
+      type: "text",
+    },
+    battingAverage: {
+      // cricketer, bowler
+      type: "numeric",
+    },
+    bowlingAverage: {
+      // bowler
+      type: "numeric",
+    },
+  },
+  singleTableInheritance: true,
+});
+
+// Data Mapper
+const PlayerMapper = createMapper({
+  domainKey: PLAYER,
+  Table: PlayerTable,
+  customInheritanceOptions: {
+    variant: MetaData.TableInheritance.SINGLE_TABLE,
+    ParentMapper: null,
+  },
+  customColumnMap: {
+    name: "name",
+  },
+});
+
+const FootballerMapper = createMapper({
+  domainKey: FOOTBALLER,
+  Table: PersonTable,
+  customInheritanceOptions: {
+    variant: MetaData.TableInheritance.SINGLE_TABLE,
+    ParentMapper: PlayerMapper,
+  },
+  customColumnMap: {
+    club: "club",
+  },
+});
+
+// Models
+class Player extends createDomainObject({ domainKey: PLAYER }) {
+  name: string;
+}
+
+class Footballer extends extendDomainObject<Footballer>()({
+  domainKey: FOOTBALLER,
+  ParentDomainObject: Player,
+}) {
+  club: string;
+}
+
+// registry
+registry.register(PLAYER, PlayerTable, Player, PlayerMapper);
+registry.register(FOOTBALLER, PlayerTable, Footballer, FootballerMapper, true);
+```
+
+
+
 ## Documentation
 
-### Column options
-| Column Type | Description                                                | Options                                                                                                                                                         |
-| ----------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| varchar     | A varying length string possibly with length restrictions. | `limit` maximum number of characters allowed in a string                                                                                                        |
-| text        | A varying length string without length restrictions.       | None                                                                                                                                                            |
-| int         | Integer.                                                   | `primaryKey` whether column serves as primary key of table<br>`foreignKey` whether column is a foreign key to another table<br>`references` foreign key options |
-| serial      | Integer with unique index on column.                       | all options of `int`<br> `autoGenerateExclusively` whether database allows you to manually set ids for example when inserting rows into a table                 |
-| numeric     | Precise floating point type.                               | None                                                                                                                                                            |
-| bool        | Boolean.                                                   | None                                                                                                                                                            |
+Notation adopted (outside of Typescript code blocks):
+* `a: b` means that the variable name is `a` and its type is `b`.
+  * `a: b, c` means that the variable type is `b` or `c`
+* `a` means that the variable name is `a` and its type is a Javascript object.
+* `[a]` means, in the context of a key of a Javascript object, that it is a key with any name. 
 
+### Column options
+| Column Type | Description                                                | Options                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| varchar     | A varying length string possibly with length restrictions. | `limit` maximum number of characters allowed in a string                                                                                                                                                                                                     |
+| text        | A varying length string without length restrictions.       | None                                                                                                                                                                                                                                                         |
+| int         | Integer.                                                   | `primaryKey: boolean` whether column serves as primary key of table<br>`foreignKey: boolean` whether column is a foreign key to another table<br>`references` foreign key options<br> `variant: "small", "regular", "big"` Size of int stored in PostgreSQL. |
+| serial      | Integer with unique index on column.                       | all options of `int`<br> `autoGenerateExclusively` whether database allows you to manually set ids for example when inserting rows into a table                                                                                                              |
+| uuid        | UUID.                                                      | `version: "v1", "v2", "v3", "v4"` Version of uuid.                                                                                                                                                                                                           |
+| numeric     | Precise floating point type.                               | None                                                                                                                                                                                                                                                         |
+| bool        | Boolean.                                                   | None                                                                                                                                                                                                                                                         |
+| timestamp   | Timestamp/Timestamptz.                                     | `timezone: boolean` true for timestamptz, false for timestamp without timezone                                                                                                                                                                               |
+
+
+### Create Table options
+Format: `createTable(options)`
+
+Arguments:
+
+`options` A Javascript object taking the following keys  
+* `tableName: string` Snakecased or camelcased name of db table
+* `columns` A Javascript object with keys of the form `[columnName]: columnOptions`
+
+### Create Data Mapper options
+Format: `createMapper(options)`
+
+Arguments:
+
+`options` A Javascript object taking the following keys
+* `domainKey: string` Domain Key associated with the data mapper
+* `Table: typeof Table` Table associated with the data mapper
+* `customColumnMap` A Javascript object of the form
+  ```typescript
+  {
+    [tableColumnKey]: {
+      fieldConversionFunction: obj => value;
+    }
+  }
+  ```
+* `customObjectMap` A Javascript object of the form
+  ```typescript
+  {
+    domainObjectFields: {
+      [domainFieldName]: {
+        [domainSubfieldName]: {
+          tableColumns: [col1, col2],
+          columnConversionFunction: ([col1, col2]) => value;
+      }
+    }
+  }
+  ```
+  Currently, customObjectMap only supports 1 level of nesting.
+* `belongsTo` A Javascript object of the form
+  ```typescript
+  {
+    [tableColumnKey]: {
+      foreignKey: string;
+      otherDomainKey: string;
+    }
+  }
+  ```
+* `hasOne` See `belongsTo`.
+* `hasMany` See `belongsTo`.
+* `customInheritanceOptions` Currently, there is only the option to choose Single Table Inheritance.
+
+
+### Create Domain Object options
+Format: `createDomainObject<T>(options)`
+* `T`: Classname of domain object.
+
+Arguments:
+
+`options` A Javascript object taking the following keys
+* `domainKey: string` Domain key associated with the domain object.
+
+### Extend Domain Object options
+Format: `extendDomainObject<T>()(options)`
+* `T`: Classname of domain object
+
+Note: The double parentheses here is not a typo. Function currying is needed here due to Typescript limitations.
+
+Arguments:
+
+`options` A Javascript object taking the following keys
+* `domainKey: string` Domain key associated with the domain object.
+* `ParentDomainObject: typeof DomainObject` The DomainObject class that the current domain object inherits from.
