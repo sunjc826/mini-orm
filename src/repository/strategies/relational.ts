@@ -1,4 +1,5 @@
-import { DomainObject } from "../../domain";
+import { DomainObject } from "../..";
+import { ResultSet } from "../../connection";
 import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";
@@ -7,9 +8,11 @@ import { Aggregate } from "../query/aggregate";
 import { Criterion } from "../query/criterion";
 import { Join } from "../query/join";
 import {
-  ArrayifyIfNotArray,
-  GetArrayInner,
+  ArrayifyRepositoryStrategy,
+  ExtractArray,
+  UnarrayifyRepositoryStrategy,
   RepositoryStrategy,
+  WrapWithArray,
 } from "../types";
 
 export class RelationalStrategy<T> implements RepositoryStrategy<T> {
@@ -60,7 +63,7 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
     this.currentQuery = new Query(base);
     this.isSingle = false;
     this.toDomainObject = true;
-    return this as unknown as ArrayifyIfNotArray<T>;
+    return this as unknown as ArrayifyRepositoryStrategy<T>;
   }
 
   getQuery() {
@@ -152,49 +155,72 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
   getSingle() {
     this.currentQuery!.limit(1);
     this.isSingle = true;
-    return this as unknown as GetArrayInner<T>;
+    return this as unknown as UnarrayifyRepositoryStrategy<T>;
   }
 
-  count() {
-    this.currentQuery!.aggregate(
-      new Aggregate({ aggregateFunction: Aggregate.AggregateFunctions.COUNT })
-    );
+  private async aggregate(options: Aggregate.AggregateOptions) {
+    this.currentQuery!.aggregate(options);
+    this.toDomainObject = false;
+    this.isSingle = true; // we only support single aggregate queries
+    const aggregateResult = await this.exec();
+    return aggregateResult;
   }
 
-  min(domainObjectField: string) {
-    this.currentQuery!.aggregate(
-      new Aggregate({
-        aggregateFunction: Aggregate.AggregateFunctions.MIN,
-        domainObjectField,
-      })
-    );
+  async count() {
+    const c = (
+      await this.aggregate(
+        new Aggregate({ aggregateFunction: Aggregate.AggregateFunctions.COUNT })
+      )
+    ).count;
+    return Number.parseInt(c);
   }
 
-  max(domainObjectField: string) {
-    this.currentQuery!.aggregate(
-      new Aggregate({
-        aggregateFunction: Aggregate.AggregateFunctions.MAX,
-        domainObjectField,
-      })
-    );
+  async min(domainObjectField: string) {
+    const m = (
+      await this.aggregate(
+        new Aggregate({
+          aggregateFunction: Aggregate.AggregateFunctions.MIN,
+          domainObjectField,
+        })
+      )
+    ).min;
+    return Number.parseInt(m);
   }
 
-  average(domainObjectField: string) {
-    this.currentQuery!.aggregate(
-      new Aggregate({
-        aggregateFunction: Aggregate.AggregateFunctions.AVG,
-        domainObjectField,
-      })
-    );
+  async max(domainObjectField: string) {
+    const m = (
+      await this.aggregate(
+        new Aggregate({
+          aggregateFunction: Aggregate.AggregateFunctions.MAX,
+          domainObjectField,
+        })
+      )
+    ).max;
+    return Number.parseInt(m);
   }
 
-  sum(domainObjectField: string) {
-    this.currentQuery!.aggregate(
-      new Aggregate({
-        aggregateFunction: Aggregate.AggregateFunctions.SUM,
-        domainObjectField,
-      })
-    );
+  async average(domainObjectField: string) {
+    const a = (
+      await this.aggregate(
+        new Aggregate({
+          aggregateFunction: Aggregate.AggregateFunctions.AVG,
+          domainObjectField,
+        })
+      )
+    ).avg;
+    return Number.parseInt(a);
+  }
+
+  async sum(domainObjectField: string) {
+    const s = (
+      await this.aggregate(
+        new Aggregate({
+          aggregateFunction: Aggregate.AggregateFunctions.SUM,
+          domainObjectField,
+        })
+      )
+    ).sum;
+    return Number.parseInt(s);
   }
 
   private retrieveFromInMemoryData() {
@@ -206,25 +232,38 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
       .find((obj) => query.matchObject(obj));
   }
 
-  private retrieveFromMapper() {
+  private async retrieveFromMapper() {
     const query = this.currentQuery!;
     const BaseMapper = registry.getMapper(query.base);
+    let results: WrapWithArray<T> | ResultSet<any>;
+    if (this.toDomainObject) {
+      results = await BaseMapper.select<ExtractArray<T> & DomainObject>(
+        this.currentQuery!.toQueryString(),
+        undefined,
+        {
+          cacheKey: this.useCache ? query.toCacheObject() : undefined,
+        }
+      );
+    } else {
+      results = await BaseMapper.selectResultSet(
+        this.currentQuery!.toQueryString(),
+        undefined,
+        {
+          cacheKey: this.useCache ? query.toCacheObject() : undefined,
+        }
+      );
+    }
 
-    return BaseMapper.select<T & DomainObject>(
-      this.currentQuery!.toQueryString(),
-      undefined,
-      {
-        cacheKey: this.useCache ? query.toCacheObject() : undefined,
-        resultSetOnly: !this.toDomainObject,
-      }
-    );
+    const queryResult = this.isSingle ? results[0] : results;
+
+    return queryResult;
   }
 
   /**
    * Executes the current query and returns the domain objects of base.
    * @returns An array of domain objects or a single domain object.
    */
-  async exec() {
+  private async exec() {
     if (!this.currentQuery) {
       throw new Error("no query defined");
     }
@@ -239,14 +278,12 @@ export class RelationalStrategy<T> implements RepositoryStrategy<T> {
         return inMemoryResult;
       }
     }
-
-    const domainObjects = await this.retrieveFromMapper();
-    const queryResult = this.isSingle ? domainObjects[0] : domainObjects;
-    return (queryResult || null) as T | null;
+    const queryResult = await this.retrieveFromMapper();
+    return queryResult ?? null;
   }
 
   then(callback?: AnyFunction) {
-    return this.exec().then(callback);
+    return (this.exec() as unknown as Promise<T | null>).then(callback);
   }
 
   catch(callback: AnyFunction) {

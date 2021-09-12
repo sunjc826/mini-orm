@@ -1,4 +1,5 @@
 import { DomainObject } from "../../domain";
+import { isStringEmpty } from "../../helpers";
 import { Cacheable } from "../../helpers/types";
 import { registry } from "../../registry";
 import { Aggregate } from "./aggregate";
@@ -138,7 +139,11 @@ export class Query implements Cacheable {
     const sqlFromPart = this.joinDomains.toSqlJoin();
     const sqlWherePart = sqlWherePartArr.join(" AND ");
     const sqlLimitPart = this.limitCount ? `LIMIT ${this.limitCount}` : "";
-    const sql = `SELECT ${sqlSelectPart} FROM ${sqlFromPart} WHERE ${sqlWherePart} ${sqlLimitPart};`;
+    const sql = `SELECT ${sqlSelectPart} ${
+      isStringEmpty(sqlFromPart) ? "" : `FROM ${sqlFromPart}`
+    } ${
+      isStringEmpty(sqlWherePart) ? "" : `WHERE ${sqlWherePart}`
+    } ${sqlLimitPart};`;
 
     return sql;
   }

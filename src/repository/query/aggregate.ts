@@ -49,7 +49,7 @@ export class Aggregate {
           }
         }
         const actualDbColumnName = Table.getDbColumnName(tableColumnKey);
-        return `${this.aggregateFunction}(${actualDbColumnName})`;
+        return `${this.aggregateFunction}(${actualDbColumnName}) AS ${this.aggregateFunction}`;
       }
       default: {
         throw new Error("unexpected aggregate function type");

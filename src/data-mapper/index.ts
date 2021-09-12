@@ -78,18 +78,28 @@ export abstract class DataMapper {
     client?: PoolClient,
     options?: Partial<{
       cacheKey: any;
-      resultSetOnly: boolean;
     }>
   ): Promise<Array<T>> {
+    const resultSet = await this.selectResultSet(sql, client, options);
+
+    return this.resultSetToDomainObjects<T>(resultSet);
+  }
+
+  static async selectResultSet(
+    sql: string,
+    client?: PoolClient,
+    options?: Partial<{
+      cacheKey: any;
+    }>
+  ) {
     const resultSet = (await (client || this.dbPool).query(
       sql
-    )) as ResultSet<T>;
+    )) as ResultSet<any>;
+
     if (options?.cacheKey) {
       this.doCache(options.cacheKey, resultSet);
     }
-    return options?.resultSetOnly
-      ? resultSet
-      : this.resultSetToDomainObjects(resultSet);
+    return resultSet;
   }
 
   /**
@@ -391,12 +401,12 @@ export abstract class DataMapper {
       // create the domain objects
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
-        const DomainObj = registry.getDomainObject<T>(domainKey);
+        const DomainObj = registry.getDomainObject(domainKey);
         const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
 
         Mapper.mapColumnsToFields(tableObj, domainObj);
-        const actualDomainObj = new DomainObj(domainObj);
+        const actualDomainObj = new DomainObj(domainObj) as T;
         // log(actualDomainObj, domainKey, this.domainKey);
         registry.unitOfWork.registerClean({
           domainKey,

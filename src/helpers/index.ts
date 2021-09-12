@@ -99,3 +99,7 @@ export function stripHasManyRelation(relationName: string) {
 export function generateSingleTableInheritanceColumn(tableName: string) {
   return `${tableName}Type`;
 }
+
+export function isStringEmpty(str: string) {
+  return str === "";
+}

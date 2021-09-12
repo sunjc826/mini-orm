@@ -311,3 +311,9 @@ test("single table inheritance delete", async () => {
   const nullFootballer = await Footballer.findById(1);
   expect(nullFootballer).toBeNull();
 });
+
+test("aggregate function: count", async () => {
+  await pool.query(AuthorTest.insertSql);
+  const authorCount = await Author.count();
+  expect(authorCount).toEqual(5);
+});
