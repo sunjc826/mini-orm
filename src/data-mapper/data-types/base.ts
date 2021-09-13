@@ -18,15 +18,19 @@ export abstract class ColumnType {
    */
   unique: boolean;
 
-  // TODO
-  defaultValue?: any;
+  /**
+   * Default value of column.
+   */
+  defaultValue?: string;
 
   constructor(name: string, options: Partial<ColumnOptions> = {}) {
     this.name = _.snakeCase(name);
     const { nullable = true, unique = false, defaultValue } = options;
     this.nullable = nullable;
     this.unique = unique;
-    this.defaultValue = defaultValue;
+    this.defaultValue = defaultValue
+      ? this.toSqlString(defaultValue)
+      : undefined;
   }
 
   /**
@@ -46,6 +50,14 @@ export abstract class ColumnType {
   }
 
   /**
+   * Returns sql of default value.
+   * @returns Sql string of default value.
+   */
+  getDefault(): string {
+    return this.defaultValue ? `DEFAULT ${this.defaultValue}` : "";
+  }
+
+  /**
    * Returns sql of generic column constraints (other than primary key, foreign key).
    * @returns Sql string of generic column constraints.
    */
@@ -58,7 +70,7 @@ export abstract class ColumnType {
    * @returns Sql string of column, including name, type, constraints.
    */
   toSqlCreate() {
-    return `${this.getName()} ${this.getType().toUpperCase()} ${this.getOptions()}`;
+    return `${this.getName()} ${this.getType().toUpperCase()} ${this.getDefault()} ${this.getOptions()}`;
   }
 
   toSqlString(data: any) {

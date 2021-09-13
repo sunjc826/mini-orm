@@ -103,3 +103,7 @@ export function generateSingleTableInheritanceColumn(tableName: string) {
 export function isStringEmpty(str: string) {
   return str === "";
 }
+
+export function isArrayEmpty(arr: Array<any>) {
+  return arr.length === 0;
+}

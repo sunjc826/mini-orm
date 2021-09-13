@@ -11,8 +11,8 @@ export class Uuid extends PrimaryKeyMixin(ForeignKeyMixin(ColumnType)) {
     this.version = options.version ?? "v4";
   }
 
-  getType() {
-    return `uuid DEFAULT uuid_generate_${this.version}()`;
+  getDefault() {
+    return `DEFAULT uuid_generate_${this.version}()`;
   }
 }
 

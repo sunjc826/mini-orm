@@ -54,7 +54,8 @@ export type ColumnTypes =
 export type AllOptions =
   | Varchar.VarcharOptions
   | Int.IntOptions
-  | Serial.SerialOptions;
+  | Serial.SerialOptions
+  | Uuid.UuidOptions;
 
 export const COLUMN_TYPE_MAP: Record<DataTypes, Constructor<ColumnTypes>> = {
   varchar: Varchar,

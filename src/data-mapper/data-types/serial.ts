@@ -11,8 +11,8 @@ export class Serial extends Int {
     super(name, options);
   }
 
-  getType() {
-    return `${super.getType()} GENERATED ${
+  getDefault() {
+    return `GENERATED ${
       this.autoGenerateExclusively ? "ALWAYS" : "BY DEFAULT"
     } AS IDENTITY`;
   }

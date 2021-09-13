@@ -54,34 +54,14 @@ class Registry {
     return Object.keys(this.registry);
   }
 
-  // registerTable<T extends typeof Table>(domainKey: string, _Table: T) {
-  //   this.registry[domainKey]._Table = _Table;
-  //   this.tableNameToDomainKey[_Table.tableName] = domainKey;
-  //   this.unitOfWork.register(domainKey);
-  // }
-
-  // registerDomainObject<D extends DomainObject>(
-  //   domainKey: string,
-  //   _DomainObject: Constructor<D>
-  // ) {
-  //   this.registry[domainKey]._DomainObject = _DomainObject;
-  //   this.unitOfWork.register(domainKey);
-  // }
-
-  // registerDataMapper<M extends typeof DataMapper>(
-  //   domainKey: string,
-  //   _DataMapper: M
-  // ) {
-  //   this.registry[domainKey]._DataMapper = _DataMapper;
-  //   this.unitOfWork.register(domainKey);
-  // }
-
   getTable<T extends typeof Table>(domainKey: string) {
     return this.registry[domainKey]?._Table as T;
   }
 
   getDbTables() {
-    return Object.values(this.registry)
+    const sortedDomainKeys = this.getCorrectCreateOrInsertOrder();
+    return sortedDomainKeys
+      .map((key) => this.registry[key])
       .filter((ele) => !ele.singleTableInheritance)
       .map((ele) => ele._Table);
   }
@@ -109,7 +89,7 @@ class Registry {
    * objA may belong to obj B -- and we wish to insert both.
    * The topo sort will force objB to be inserted first (regardless of whether objB.a === objA).
    */
-  getCorrectInsertOrder(): Array<string> {
+  getCorrectCreateOrInsertOrder(): Array<string> {
     if (this.topoSortedDomainKeys) {
       return this.topoSortedDomainKeys;
     }
@@ -128,7 +108,7 @@ class Registry {
   }
 
   getCorrectDeleteOrder(): Array<string> {
-    const sorted = this.getCorrectInsertOrder();
+    const sorted = this.getCorrectCreateOrInsertOrder();
     return sorted.reverse();
   }
 }

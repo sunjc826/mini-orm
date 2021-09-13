@@ -100,7 +100,7 @@ export class UnitOfWork {
   }
 
   private async insertNew(client: DbClient) {
-    const sorted = registry.getCorrectInsertOrder();
+    const sorted = registry.getCorrectCreateOrInsertOrder();
     for (const domainKey of sorted) {
       const idArr = await registry
         .getMapper(domainKey)

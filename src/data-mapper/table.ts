@@ -1,8 +1,11 @@
 import _ from "lodash";
+import { registry } from "..";
 import {
+  brackets,
   formatDbColumn,
   formatResultSetColumnName,
   generateSingleTableInheritanceColumn,
+  isArrayEmpty,
 } from "../helpers";
 import { FirstParam } from "../helpers/types";
 import { log, write } from "../lib-test/tests/helpers";
@@ -12,13 +15,13 @@ import {
   ColumnTypes,
   COLUMN_TYPE_MAP,
 } from "./data-types";
-import { Int } from "./data-types/int";
+import { Keyable } from "./data-types/mixins/keyable";
 
-export abstract class Table {
+export class Table {
   /**
    * The actual db table name, snakecased.
    */
-  static tableName: string;
+  declare static tableName: string;
   /**
    * A map of the form
    * [tableColumnKey] : {
@@ -27,7 +30,10 @@ export abstract class Table {
    * }
    * Note that [tableColumnKey] can still be camelcased
    */
-  static columns: Record<string, ColumnTypes> = {};
+  declare static columns: Record<string, ColumnTypes>;
+
+  declare static primaryKey: Array<string>;
+
   // TODO: supports single column references for now
   // can consider implementing composite keys in future
   // Note: We also assume that 2 distinct table can only have 1 reference, this is why
@@ -38,18 +44,19 @@ export abstract class Table {
    *  ...other properties
    * }
    */
-  static references: Record<string, Table.Reference> = {};
-  static referencedBy: Record<string, Table.ReferencedBy> = {};
+  declare static references: Record<string, Table.Reference>;
+  declare static referencedBy: Record<string, Table.ReferencedBy>;
 
   /**
    * A map of the form
    * [ownTableColumnKey]: [otherDomainKey]
    */
-  static foreignKeys: Record<string, string> = {};
-  // TODO
-  static referencedByKeys = {};
+  declare static foreignKeys: Record<string, string>;
 
-  static isUsingSingleTableInheritance = false;
+  // TODO: This field is unused so far and is unimplemented.
+  declare static referencedByKeys: any;
+
+  declare static isUsingSingleTableInheritance: boolean;
 
   // TODO: Can also implement table constraints in future
 
@@ -67,15 +74,29 @@ export abstract class Table {
     if (this.columns[name]) {
       throw new Error("column already exists");
     }
-    if (type === "int" && (options as Int.IntOptions).references) {
-      const { domainKey, tableColumnKey } = (options as Int.IntOptions)
-        .references;
+
+    if (
+      (type === "int" || type === "uuid") &&
+      (options as Keyable.ForeignKeyableConstructorOptions).references
+    ) {
+      const { domainKey, tableColumnKey } = (
+        options as Keyable.ForeignKeyableConstructorOptions
+      ).references;
       this.references[domainKey] = {
         ownTableForeignKeys: [name],
         otherTableCandidateKeys: [tableColumnKey],
       };
       this.foreignKeys[name] = domainKey;
     }
+
+    if (
+      (type === "int" || type === "serial" || type === "uuid") &&
+      (options as Keyable.PrimaryKeyableConstructorOptions).primaryKey
+    ) {
+      console.log("reached!!!!!");
+      this.setPrimaryKey([name]);
+    }
+
     this.columns[name] = new COLUMN_TYPE_MAP[type](name, options);
   }
 
@@ -91,6 +112,13 @@ export abstract class Table {
         addColumnsOptions.options || {}
       );
     }
+  }
+
+  static setPrimaryKey(primaryKey: Array<string>) {
+    if (!isArrayEmpty(this.primaryKey)) {
+      throw new Error("multiple primary keys specified");
+    }
+    primaryKey.forEach((ele) => this.primaryKey.push(ele));
   }
 
   /**
@@ -182,6 +210,26 @@ export abstract class Table {
     for (const [_columnKey, column] of Object.entries(this.columns)) {
       innerSqlArr.push(column.toSqlCreate());
     }
+
+    innerSqlArr.push(`PRIMARY KEY ${brackets(this.primaryKey.join(","))}`);
+
+    for (const [
+      domainKey,
+      { ownTableForeignKeys, otherTableCandidateKeys },
+    ] of Object.entries(this.references)) {
+      const OtherTable = registry.getTable(domainKey);
+      const otherTableName = OtherTable.tableName;
+      innerSqlArr.push(
+        `FOREIGN KEY ${brackets(
+          ownTableForeignKeys.map((key) => this.getDbColumnName(key)).join(",")
+        )} REFERENCES ${otherTableName}${brackets(
+          otherTableCandidateKeys
+            .map((key) => OtherTable.getDbColumnName(key))
+            .join(",")
+        )}`
+      );
+    }
+
     const innerSql = innerSqlArr.join(",");
 
     const sql = `CREATE TABLE ${this.tableName} (${innerSql});`;
@@ -261,33 +309,14 @@ export function createTable({
   singleTableInheritance = false,
 }: CreateTableOptions) {
   const NewTable = class extends Table {
-    /**
-     * The actual db table name, snakecased.
-     */
-    static tableName: string = _.snakeCase(dbTableName);
-    /**
-     * A map of the form
-     * [tableColumnKey] : {
-     *  name (which is the actual snakecased db column name)
-     *  ...other properties
-     * }
-     * Note that [tableColumnKey] can still be camelcased
-     */
-    static columns: Record<string, ColumnTypes> = {};
-    // TODO: supports single column references for now
-    // can consider implementing composite keys in future
-    // Note: We also assume that 2 distinct table can only have 1 reference, this is why
-    // the table's domainKey itself is used as a key here
-    /**
-     * A map of the form
-     * [otherDomainKey] : {
-     *  ...other properties
-     * }
-     */
-    static references: Record<string, Table.Reference> = {};
-    static referencedBy: Record<string, Table.ReferencedBy> = {};
-
-    static foreignKeys: Record<string, string> = {};
+    static tableName = _.snakeCase(dbTableName);
+    static columns = {};
+    static primaryKey = [];
+    static references = {};
+    static referencedBy = {};
+    static foreignKeys = {};
+    static referencedByKeys = {};
+    static isUsingSingleTableInheritance = false;
   };
   NewTable.addColumns(columns);
   if (singleTableInheritance) {
