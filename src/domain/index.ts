@@ -39,6 +39,10 @@ export class DomainObject {
     return registry.unitOfWork.commit();
   }
 
+  // update<T extends DomainObject>(
+  // this: T,
+  // ownKeyValues: RecursivePartial<OwnKeyValues<T>>,
+  // merge: boolean = true
   update(
     ownKeyValues: RecursivePartial<OwnKeyValues<typeof this>>,
     merge: boolean = true
