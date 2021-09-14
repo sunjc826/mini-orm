@@ -1,4 +1,4 @@
-import { createTable } from "../../data-mapper/table";
+import { createTable } from "../../table";
 
 export const AuthorTable = createTable({
   tableName: "authors",

@@ -1,12 +1,13 @@
 import _ from "lodash";
-import { registry } from "..";
+
+import { ResultSet } from "../connection/postgres";
 import {
   brackets,
   formatDbColumn,
   formatResultSetColumnName,
   generateSingleTableInheritanceColumn,
   isArrayEmpty,
-} from "../helpers";
+} from "../helpers/string";
 import { FirstParam } from "../helpers/types";
 import { log, write } from "../lib-test/tests/helpers";
 import {
@@ -16,6 +17,8 @@ import {
   COLUMN_TYPE_MAP,
 } from "./data-types";
 import { Keyable } from "./data-types/mixins/keyable";
+import { registry } from "../registry";
+import { InformationSchema } from "./types";
 
 export class Table {
   /**
@@ -93,7 +96,6 @@ export class Table {
       (type === "int" || type === "serial" || type === "uuid") &&
       (options as Keyable.PrimaryKeyableConstructorOptions).primaryKey
     ) {
-      console.log("reached!!!!!");
       this.setPrimaryKey([name]);
     }
 
@@ -232,9 +234,44 @@ export class Table {
 
     const innerSql = innerSqlArr.join(",");
 
-    const sql = `CREATE TABLE ${this.tableName} (${innerSql});`;
+    const sql = `CREATE TABLE IF NOT EXISTS ${this.tableName} (${innerSql});`;
 
     return sql;
+  }
+
+  /**
+   * Alters db table to fit in-memory representation of table.
+   * @param currentDbColumns
+   */
+  static toSqlAlterDynamically(
+    currentDbColumns: ResultSet<InformationSchema.Columns>
+  ) {
+    // Basic algorithm only checks for column names. Does not ensure column type or option integrity.
+    const dbColumnNames = new Set(
+      currentDbColumns.map((ele) => ele.column_name)
+    );
+    const inMemoryColumnNames = new Set(
+      Object.values(this.columns).map((ele) => ele.getName())
+    );
+    let alterSql = "";
+    for (const [_columnKey, column] of Object.entries(this.columns)) {
+      const dbColumnName = column.getName();
+      if (dbColumnNames.has(dbColumnName)) {
+        continue;
+      }
+
+      alterSql += `ALTER TABLE ${
+        this.tableName
+      } ADD COLUMN ${column.toSqlCreate()};`;
+    }
+
+    for (const { column_name } of currentDbColumns) {
+      if (inMemoryColumnNames.has(column_name)) {
+        continue;
+      }
+      alterSql += `ALTER TABLE ${this.tableName} DROP COLUMN ${column_name};`;
+    }
+    return alterSql;
   }
 
   static toSqlTruncate(): string {

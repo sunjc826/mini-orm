@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { DataMapper } from ".";
-import { DbClient } from "../connection/connect";
+import { DbClient } from "../connection/postgres/connect";
 import { DomainObject } from "../domain";
 import { registry } from "../registry";
 

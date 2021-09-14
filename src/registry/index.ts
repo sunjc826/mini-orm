@@ -1,5 +1,5 @@
 import { DataMapper } from "../data-mapper";
-import { Table } from "../data-mapper/table";
+import { Table } from "../table";
 import { UnitOfWork } from "../data-mapper/unitOfWork";
 import { DomainObject } from "../domain";
 import { Graph } from "../helpers/graph";

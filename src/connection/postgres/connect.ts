@@ -1,5 +1,5 @@
 import { ClientConfig, Pool, PoolClient } from "pg";
-import { write } from "../lib-test/tests/helpers";
+import { write } from "../../lib-test/tests/helpers";
 
 export type ResultSet<T> = Array<T>;
 

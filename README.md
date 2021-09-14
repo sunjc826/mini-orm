@@ -169,6 +169,143 @@ await DomainObject.commit();
 You can chain a bunch of inserts, updates and deletes before calling `commit`, which will notify the database of these changes in a single transaction.
 
 ## Full code snippet
+
+### No inheritance
+```typescript
+const AUTHOR = "author";
+const BOOK = "book";
+const PUBLISHER = "publisher";
+
+// tables
+const AuthorTable = createTable({
+  tableName: "authors",
+  columns: {
+    id: {
+      type: "serial",
+      options: {
+        primaryKey: true,
+      },
+    },
+    name: {
+      type: "text",
+      options: {
+        nullable: false,
+      },
+    },
+    age: {
+      type: "int",
+    },
+  },
+});
+
+const BookTable = createTable({
+  tableName: "books",
+  columns: {
+    id: {
+      type: "serial",
+      options: {
+        primaryKey: true,
+      },
+    },
+    name: {
+      type: "text",
+    },
+    genre: {
+      type: "varchar",
+      options: {
+        limit: 20,
+      },
+    },
+    authorId: {
+      type: "int",
+      options: {
+        references: {
+          domainKey: "author",
+          tableColumnKey: "id",
+        },
+      },
+    },
+  },
+});
+
+const PublisherTable = createTable({
+  tableName: "publishers",
+  columns: {
+    id: {
+      type: "serial",
+      options: {
+        primaryKey: true,
+      },
+    },
+    region: {
+      type: "text",
+    },
+    bookId: {
+      type: "int",
+      options: {
+        references: {
+          domainKey: "book",
+          tableColumnKey: "id",
+        },
+      },
+    },
+  },
+});
+
+// mappers
+const AuthorMapper = createMapper({
+  domainKey: AUTHOR,
+  Table: AuthorTable,
+  hasMany: {
+    books: {},
+  },
+});
+
+const BookMapper = createMapper({
+  domainKey: BOOK,
+  Table: BookTable,
+  belongsTo: {
+    author: {},
+  },
+  hasOne: {
+    publisher: {},
+  },
+});
+
+const PublisherMapper = createMapper({
+  domainKey: "publisher",
+  Table: PublisherTable,
+  belongsTo: {
+    book: {},
+  },
+});
+
+// models
+class Author extends createDomainObject<Author>({ domainKey: AUTHOR }) {
+  name: string;
+  age: number;
+  books: HasMany<Book>;
+}
+
+class Book extends createDomainObject<Book>({ domainKey: BOOK }) {
+  name: string;
+  genre: string;
+  authorId: string;
+  author: BelongsTo<Author>;
+  publisher: HasOne<Publisher>;
+}
+
+class Publisher extends createDomainObject<Publisher>({
+  domainKey: PUBLISHER,
+}) {
+  region: string;
+  // this is only for testing purposes, of course in an actual db
+  // it makes no sense for a publisher to belong to a book
+  book: BelongsTo<Book>;
+}
+```
+
+### Single Table Inheritance
 ```typescript
 // Domain Keys
 const PLAYER = "player";
@@ -211,7 +348,7 @@ const PlayerMapper = createMapper({
   domainKey: PLAYER,
   Table: PlayerTable,
   customInheritanceOptions: {
-    variant: MetaData.TableInheritance.SINGLE_TABLE,
+    variant: "singleTable",
     ParentMapper: null,
   },
   customColumnMap: {
@@ -223,7 +360,7 @@ const FootballerMapper = createMapper({
   domainKey: FOOTBALLER,
   Table: PersonTable,
   customInheritanceOptions: {
-    variant: MetaData.TableInheritance.SINGLE_TABLE,
+    variant: "singleTable",
     ParentMapper: PlayerMapper,
   },
   customColumnMap: {

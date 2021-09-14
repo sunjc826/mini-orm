@@ -1,5 +1,5 @@
 import { DataMapper } from "..";
-import { Table } from "../table";
+import { Table } from "../../table";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 
 export class SingleTableInheritanceMap extends AllMetadataField {

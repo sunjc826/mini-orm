@@ -1,4 +1,4 @@
-import { createTable } from "../../../data-mapper/table";
+import { createTable } from "../../../table";
 import { FOOTBALLER } from "../../domainKeys";
 
 export const PlayerTable = createTable({

@@ -1,4 +1,4 @@
-import { DomainObject } from "..";
+import { DomainObject } from "../domain";
 import { RelationalStrategy } from "./strategies/relational";
 import { RepositoryStrategy } from "./types";
 

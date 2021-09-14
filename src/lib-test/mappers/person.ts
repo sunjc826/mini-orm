@@ -1,5 +1,5 @@
 import { createMapper } from "../../data-mapper";
-import { MetaData } from "../../data-mapper/metadata/metadata";
+import { MetaData } from "../../data-mapper/metadata";
 import { PERSON } from "../domainKeys";
 import { Person } from "../models/person";
 import { PersonTable } from "../tables/person";

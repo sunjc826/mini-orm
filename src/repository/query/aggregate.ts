@@ -1,5 +1,6 @@
-import { DataMapper, Table } from "../..";
+import { DataMapper } from "../../data-mapper";
 import { MetaDataObjectType } from "../../data-mapper/metadata/types";
+import { Table } from "../../table";
 
 export class Aggregate {
   aggregateFunction: Aggregate.AggregateFunctions;

@@ -1,5 +1,5 @@
-import { DomainObject } from "../..";
 import { ResultSet } from "../../connection";
+import { DomainObject } from "../../domain";
 import { AnyFunction } from "../../helpers/types";
 import { log } from "../../lib-test/tests/helpers";
 import { registry } from "../../registry";

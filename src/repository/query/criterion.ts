@@ -1,8 +1,8 @@
 import { DataMapper } from "../../data-mapper";
 import { MetaDataObjectType } from "../../data-mapper/metadata/types";
-import { Table } from "../../data-mapper/table";
+import { Table } from "../../table";
 import { DomainObject } from "../../domain";
-import { formatDbColumn } from "../../helpers";
+import { formatDbColumn } from "../../helpers/string";
 import { CompositeComparator } from "../../helpers/sorting";
 import { Cacheable, Comparable } from "../../helpers/types";
 import { Operators } from "./types";

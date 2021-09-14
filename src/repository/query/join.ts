@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { formatDbColumn } from "../../helpers";
+import { formatDbColumn } from "../../helpers/string";
 import { Cacheable } from "../../helpers/types";
 import { registry } from "../../registry";
 import { EMPTY } from "../types";

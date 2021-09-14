@@ -1,5 +1,5 @@
 import { DomainObject } from "../../domain";
-import { isStringEmpty } from "../../helpers";
+import { isStringEmpty } from "../../helpers/string";
 import { Cacheable } from "../../helpers/types";
 import { registry } from "../../registry";
 import { Aggregate } from "./aggregate";

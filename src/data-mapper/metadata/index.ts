@@ -1,5 +1,5 @@
-import { Table } from "../table";
-import { ID_COLUMN_NAME } from "../data-types";
+import { Table } from "../../table";
+import { ID_COLUMN_NAME } from "../../table/data-types";
 import { ColumnMap } from "./columnMap";
 import { ManualObjectMap } from "./manualObjectMap";
 import { ForeignKeyMap, RelationType } from "./foreignKeyMap";
@@ -16,15 +16,12 @@ export class MetaData {
     options: MetaData.GenerateMetaDataOptions<T>
   ) {
     const customInheritanceOptions =
-      options.customInheritanceOptions || MetaData.TableInheritance.NONE;
+      options.customInheritanceOptions || MetaData.none;
 
     this.domainKey = options.domainKey;
-    if (customInheritanceOptions === MetaData.TableInheritance.NONE) {
+    if (customInheritanceOptions === MetaData.none) {
       this.generateRegularMetaData(options);
-    } else if (
-      customInheritanceOptions.variant ===
-      MetaData.TableInheritance.SINGLE_TABLE
-    ) {
+    } else if (customInheritanceOptions.variant === MetaData.singleTable) {
       this.generateSingleTableInheritanceMetaData(options);
     }
   }
@@ -240,13 +237,14 @@ export class MetaData {
 }
 
 export namespace MetaData {
-  export enum TableInheritance {
-    NONE,
-    SINGLE_TABLE,
-  }
+  export const none = "none" as const;
+  export type none = typeof none;
+  export const singleTable = "singleTable" as const;
+  export type singleTable = typeof singleTable;
+  export type TableInheritance = none | singleTable;
 
   export interface SingleTableInheritanceOptions {
-    variant: TableInheritance.SINGLE_TABLE;
+    variant: singleTable;
     ParentMapper: typeof DataMapper | null; // null indicates root mapper
   }
 
@@ -273,9 +271,7 @@ export namespace MetaData {
     belongsTo?: Record<string, MetaData.RelationOptionsWithoutName>;
     hasOne?: Record<string, MetaData.RelationOptionsWithoutName>;
     hasMany?: Record<string, MetaData.RelationOptionsWithoutName>;
-    customInheritanceOptions?:
-      | TableInheritance.NONE
-      | SingleTableInheritanceOptions;
+    customInheritanceOptions?: none | SingleTableInheritanceOptions;
   }
 
   export interface RelationOptionsWithoutName {

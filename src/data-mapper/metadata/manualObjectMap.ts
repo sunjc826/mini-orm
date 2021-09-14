@@ -1,4 +1,4 @@
-import { MetaData } from "./metadata";
+import { MetaData } from ".";
 import { AllMetadataField, MetaDataObjectType } from "./types";
 // TODO: Another possible extension to embedded object map is serialized large object.
 // This can be another default strategy.

@@ -12,6 +12,9 @@ export class Uuid extends PrimaryKeyMixin(ForeignKeyMixin(ColumnType)) {
   }
 
   getDefault() {
+    if (this.defaultValue) {
+      throw new Error("default uuid not supported");
+    }
     return `DEFAULT uuid_generate_${this.version}()`;
   }
 }

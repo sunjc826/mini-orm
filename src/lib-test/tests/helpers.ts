@@ -1,22 +1,10 @@
 import path from "path";
 import util from "util";
 import { appendFileSync, readdirSync, unlinkSync } from "fs";
-import { quote } from "../../helpers";
 const packageLogFileDir = path.resolve(__dirname, "../", "logs/");
 const packageLogFilePath = path.resolve(packageLogFileDir, "log");
 const rootLogFileDir = path.resolve(".", "logs/");
 const rootLogFilePath = path.resolve(rootLogFileDir, "log");
-export function sqlIsTableExists(
-  tableName: string,
-  schema: string = "public"
-): string {
-  return `SELECT EXISTS (
-    SELECT 1
-    FROM   information_schema.tables 
-    WHERE  table_schema = ${quote(schema, "schema")}
-    AND    table_name = ${quote(tableName, "table")}
-    ) AS table_exists;`;
-}
 
 /**
  * Write some data to a file. If writeRoot is true, the file will be placed at [project_root]/logs/log.[fileType],

@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { DataMapper } from "../data-mapper";
-import { Table } from "../data-mapper/table";
+import { Table } from "../table";
 import { registry } from "../registry";
 import { Constructor } from "./types";
 

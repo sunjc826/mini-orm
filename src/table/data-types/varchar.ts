@@ -1,4 +1,4 @@
-import { quote } from "../../helpers";
+import { quote } from "../../helpers/string";
 import { ColumnOptions, varchar } from ".";
 import { ColumnType } from "./base";
 
@@ -21,7 +21,7 @@ export class Varchar extends ColumnType {
     return `${this.type}(${this.limit})`;
   }
 
-  toSqlString(data: any) {
+  toSqlString(data: string) {
     return quote(data, "field");
   }
 }

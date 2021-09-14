@@ -1,12 +1,12 @@
-import { DomainObject, registry } from "../..";
-import { MetaDataErrors } from "../../errors";
-import { stripHasManyRelation, addIdToName } from "../../helpers";
+import { stripHasManyRelation, addIdToName } from "../../helpers/string";
 import { Promisify } from "../../helpers/types";
 import { Query } from "../../repository/query";
 import { getVirtualDomainObject } from "../lazyLoad";
-import { Table } from "../table";
-import { MetaData } from "./metadata";
+import { Table } from "../../table";
+import { MetaData } from ".";
 import { AllMetadataField, MetaDataObjectType } from "./types";
+import { registry } from "../../registry";
+import { DomainObject } from "../../domain";
 
 export enum RelationType {
   BELONGS_TO,
@@ -138,7 +138,7 @@ export class ForeignKeyMap extends AllMetadataField {
       }
 
       default: {
-        throw MetaDataErrors.UNEXPECTED_RELATION_TYPE;
+        throw new Error("unexpected metadata object type");
       }
     }
   }

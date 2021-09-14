@@ -17,6 +17,14 @@ export class TimeStamp extends ColumnType {
       return "TIMESTAMP";
     }
   }
+
+  getTypedValue(stringValue: string): Date {
+    return new Date(stringValue);
+  }
+
+  toSqlString(data: Date) {
+    return data.toISOString();
+  }
 }
 
 export declare namespace TimeStamp {

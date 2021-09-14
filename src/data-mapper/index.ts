@@ -1,26 +1,23 @@
 import _ from "lodash";
 import { PoolClient } from "pg";
-import { getPool } from "../connection";
-import { DbPool, ResultSet } from "../connection";
+import { getPool, DbPool, ResultSet } from "../connection/postgres";
 import { redisClient } from "../connection/redis";
-import { DbClient } from "../connection/connect";
+import { DbClient } from "../connection/postgres/connect";
 import { DomainObject } from "../domain";
-import { MetaDataErrors } from "../errors";
 import {
   brackets,
   dbColumnNameToColumnKey,
   extractDomainKeyFromTable,
   quote,
   splitResultSetColumnName,
-} from "../helpers";
-import { Promisify } from "../helpers/types";
+} from "../helpers/string";
 import { log } from "../lib-test/tests/helpers";
 import { registry } from "../registry";
-import { RelationType } from "./metadata/foreignKeyMap";
-import { AllMetadataFieldTypes, MetaData } from "./metadata/metadata";
+import { AllMetadataFieldTypes, MetaData } from "./metadata";
 import { MetaDataObjectType } from "./metadata/types";
-import { Table } from "./table";
-import { ID_COLUMN_NAME } from "./data-types";
+import { Table } from "../table";
+import { ID_COLUMN_NAME } from "../table/data-types";
+import { toSqlGetTableColumns } from "../helpers/sql";
 
 export abstract class DataMapper {
   static domainKey: string;
@@ -49,6 +46,20 @@ export abstract class DataMapper {
       sql += Table.toSqlCreate();
     }
 
+    return this.dbPool.query(sql);
+  }
+
+  /**
+   * Alters tables in db based on differences from current in-memory table object.
+   */
+  static async alterTablesDynamically() {
+    let sql = "";
+    for (const Table of registry.getDbTables()) {
+      const tableColumns = await this.dbPool.query(
+        toSqlGetTableColumns(Table.tableName)
+      );
+      sql += Table.toSqlAlterDynamically(tableColumns);
+    }
     return this.dbPool.query(sql);
   }
 
@@ -233,7 +244,7 @@ export abstract class DataMapper {
         break;
       }
       default: {
-        throw MetaDataErrors.UNEXPECTED_TYPE;
+        throw new Error("unexpected metadata object type");
       }
     }
   }
@@ -321,7 +332,7 @@ export abstract class DataMapper {
         break;
       }
       default: {
-        throw MetaDataErrors.UNEXPECTED_TYPE;
+        throw new Error("unexpected metadata object type");
       }
     }
   }
@@ -402,7 +413,6 @@ export abstract class DataMapper {
       for (const [domainKey, tableObj] of Object.entries(tableColumnMap)) {
         const Mapper = registry.getMapper(domainKey);
         const DomainObj = registry.getDomainObject(domainKey);
-        const Table = registry.getTable(domainKey);
         const domainObj: Record<string, any> = {};
 
         Mapper.mapColumnsToFields(tableObj, domainObj);
@@ -456,7 +466,7 @@ export abstract class DataMapper {
         break;
       }
       default: {
-        throw MetaDataErrors.UNEXPECTED_TYPE;
+        throw new Error("unexpected metadata object type");
       }
     }
   }

@@ -1,11 +1,11 @@
 import { DataMapper } from "../../data-mapper";
 import { AuthorTable, AuthorTest } from "../tables/author";
-import { clear, sqlIsTableExists } from "./helpers";
+import { clear } from "./helpers";
 import { BookTable, BookTest } from "../tables/book";
 
 // register stuff to registry
 import "..";
-import { DbPool } from "../../connection";
+import { DbPool } from "../../connection/postgres";
 import { Author } from "../models/author";
 import { PublisherTest } from "../tables/publisher";
 import { registry } from "../../registry";
@@ -17,6 +17,7 @@ import { Publisher } from "../models/publisher";
 import { PersonTest } from "../tables/person";
 import { PlayerTest } from "../tables/single-table-inheritance/player";
 import { Footballer } from "../models/single-table-inheritance/footballer";
+import { toSqlIsTableExists } from "../../helpers/sql";
 
 let pool: DbPool;
 beforeAll(async () => {
@@ -47,10 +48,10 @@ interface CanCreateTableResult {
  */
 test("create table", async () => {
   let result: Array<CanCreateTableResult> = await pool.query(
-    sqlIsTableExists(AuthorTable.tableName)
+    toSqlIsTableExists(AuthorTable.tableName)
   );
   expect(result[0].table_exists).toBeTruthy();
-  result = await pool.query(sqlIsTableExists(BookTable.tableName));
+  result = await pool.query(toSqlIsTableExists(BookTable.tableName));
   expect(result[0].table_exists).toBeTruthy();
 });
 
