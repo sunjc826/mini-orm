@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { PoolClient } from "pg";
 import { getPool, DbPool, ResultSet } from "../connection/postgres";
-import { redisClient } from "../connection/redis";
+import { getClient } from "../connection/redis";
 import { DbClient } from "../connection/postgres/connect";
 import { DomainObject } from "../domain";
 import {
@@ -18,12 +18,27 @@ import { MetaDataObjectType } from "./metadata/types";
 import { Table } from "../table";
 import { ID_COLUMN_NAME } from "../table/data-types";
 import { toSqlGetTableColumns } from "../helpers/sql";
+import { RedisClientType } from "redis/dist/lib/client";
+import { RedisModules } from "redis/dist/lib/commands";
+import { RedisLuaScripts } from "redis/dist/lib/lua-script";
 
 export abstract class DataMapper {
   static domainKey: string;
-  static dbPool: DbPool = getPool(); // TODO: is it possible to not have the promise here?
+  static dbPool: DbPool;
   static metadata: MetaData;
-  static redisClient = redisClient;
+  static redisClient: RedisClientType<RedisModules, RedisLuaScripts>;
+
+  static init() {
+    this.dbPool = getPool();
+    this.redisClient = getClient();
+  }
+
+  static async cleanup() {
+    return Promise.all([
+      this.dbPool.end(),
+      this.redisClient.isOpen ? this.redisClient.quit() : Promise.resolve(null),
+    ]);
+  }
 
   static generateMetaData<T extends typeof Table>(
     options: MetaData.GenerateMetaDataOptions<T>
@@ -479,7 +494,7 @@ export namespace DataMapper {
       if (!client) {
         return false;
       }
-      client.release();
+      await client.release();
       return true;
     },
 

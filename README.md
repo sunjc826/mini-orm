@@ -1,5 +1,6 @@
-# mini-orm
+[![Build Status](https://app.travis-ci.com/sunjc826/mini-orm.svg?branch=main)](https://app.travis-ci.com/sunjc826/mini-orm)
 
+# mini-orm
 A PostgreSQL data mapper based object relational mapper supporting features like batched CRUD, lazy loading and single table inheritance.
 
 ## Getting started

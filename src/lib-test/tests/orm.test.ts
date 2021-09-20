@@ -22,6 +22,7 @@ import { toSqlIsTableExists } from "../../helpers/sql";
 let pool: DbPool;
 beforeAll(async () => {
   clear();
+  DataMapper.init();
   await DataMapper.Test.dropAll();
   await DataMapper.createTables();
   pool = DataMapper.dbPool;
@@ -31,7 +32,7 @@ afterAll(async () => {
   const promises = [];
   promises.push(DataMapper.Test.dropAll());
   await Promise.all(promises);
-  await pool.end();
+  await DataMapper.cleanup();
 });
 
 afterEach(async () => {
@@ -42,6 +43,14 @@ afterEach(async () => {
 interface CanCreateTableResult {
   table_exists: string;
 }
+
+/**
+ * Tests whether ORM can connect to postgresql database.
+ */
+test("connect to database", async () => {
+  const isConnectionSuccessful = await DataMapper.Test.testConn();
+  expect(isConnectionSuccessful).toEqual(true);
+});
 
 /**
  * Tests whether ORM can create registered tables.
