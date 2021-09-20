@@ -27,7 +27,7 @@ before_install:
   - pg_lsclusters # shows port of postgresql, ubuntu specific command
 install:
   - npm i
-  - npm i redis
+  - npm list --depth 0
 before_script:
   - sudo psql -c 'create database orm_test;' -p 5432 -U postgres
 script:

@@ -28,16 +28,17 @@ export abstract class DataMapper {
   static metadata: MetaData;
   static redisClient: RedisClientType<RedisModules, RedisLuaScripts>;
 
-  static init() {
+  static async init() {
     this.dbPool = getPool();
-    this.redisClient = getClient();
+    this.redisClient = await getClient();
   }
 
   static async cleanup() {
-    return Promise.all([
+    await Promise.all([
       this.dbPool.end(),
-      this.redisClient.isOpen ? this.redisClient.quit() : Promise.resolve(null),
+      this.redisClient.isOpen ? this.redisClient.quit() : Promise.resolve(),
     ]);
+    await new Promise((resolve) => setImmediate(resolve));
   }
 
   static generateMetaData<T extends typeof Table>(

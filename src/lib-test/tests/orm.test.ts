@@ -22,7 +22,7 @@ import { toSqlIsTableExists } from "../../helpers/sql";
 let pool: DbPool;
 beforeAll(async () => {
   clear();
-  DataMapper.init();
+  await DataMapper.init();
   await DataMapper.Test.dropAll();
   await DataMapper.createTables();
   pool = DataMapper.dbPool;
